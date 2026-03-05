@@ -1,122 +1,127 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "GameHub API",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#848c8e",
+    "light": "#11161e",
+    "dark": "#cfd0d2"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://media.brand.dev/2b01fe20-c04b-4a1d-a2f9-1d2789c50a7a.jpg",
+  "logo": {
+    "light": "https://media.brand.dev/5ffd6ce4-2434-4b4b-920a-f8cacac8b48b.svg",
+    "dark": "https://media.brand.dev/5ffd6ce4-2434-4b4b-920a-f8cacac8b48b.svg"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/peLuis123/albun-backend"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/peLuis123/albun-backend"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Overview",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "features"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Getting Started",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "getting-started/installation",
+              "getting-started/configuration",
+              "getting-started/database-setup"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Authentication",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "authentication/overview",
+              "authentication/jwt-tokens",
+              "authentication/roles-permissions"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Core Concepts",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "concepts/subscription-system",
+              "concepts/game-library",
+              "concepts/access-control"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Authentication",
             "pages": [
-              "api-reference/introduction"
+              "api-reference/auth/signup",
+              "api-reference/auth/login",
+              "api-reference/auth/logout",
+              "api-reference/auth/get-info"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Users",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/users/list-users",
+              "api-reference/users/create-user",
+              "api-reference/users/get-user",
+              "api-reference/users/update-user",
+              "api-reference/users/delete-user"
+            ]
+          },
+          {
+            "group": "Games",
+            "pages": [
+              "api-reference/games/list-games",
+              "api-reference/games/get-game",
+              "api-reference/games/add-game",
+              "api-reference/games/update-game",
+              "api-reference/games/delete-game"
+            ]
+          },
+          {
+            "group": "Library",
+            "pages": [
+              "api-reference/library/get-library",
+              "api-reference/library/add-to-library",
+              "api-reference/library/get-library-item",
+              "api-reference/library/update-library-item",
+              "api-reference/library/remove-from-library"
+            ]
+          },
+          {
+            "group": "Subscriptions",
+            "pages": [
+              "api-reference/subscriptions/list-plans",
+              "api-reference/subscriptions/subscribe",
+              "api-reference/subscriptions/assign-subscription",
+              "api-reference/subscriptions/cancel-subscription",
+              "api-reference/subscriptions/cancel-assigned"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "api-reference/errors",
+              "api-reference/rate-limits"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

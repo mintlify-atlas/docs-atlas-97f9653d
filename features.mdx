@@ -1,0 +1,336 @@
+---
+title: 'Key Features'
+description: 'Discover the powerful features that make GameHub API a comprehensive game management platform'
+---
+
+GameHub API is a robust RESTful platform designed for video game management and user access through a subscription and purchase system. It offers secure, role-specific routes for administrators and users, enabling the creation, editing, and querying of video games, subscription assignment, and management of each user's game library.
+
+## Core Features
+
+<CardGroup cols={2}>
+  <Card title="Role-Based Access Control" icon="shield-halved" color="#0285c7">
+    Secure authentication with distinct permissions for Admin and User roles
+  </Card>
+  <Card title="Subscription Management" icon="calendar-check" color="#16a34a">
+    Flexible plans including Trial, Monthly, and Annual subscriptions
+  </Card>
+  <Card title="Game Library System" icon="gamepad" color="#dc2626">
+    Personal game libraries with purchase and subscription-based access
+  </Card>
+  <Card title="JWT Authentication" icon="key" color="#7c3aed">
+    Secure token-based authentication with HTTP-only cookies
+  </Card>
+  <Card title="File Upload Support" icon="cloud-arrow-up" color="#ea580c">
+    Image upload functionality for game cover art and assets
+  </Card>
+  <Card title="API Documentation" icon="book-open" color="#0891b2">
+    Complete OpenAPI/Swagger documentation for all endpoints
+  </Card>
+</CardGroup>
+
+---
+
+## Role-Based Access Control
+
+GameHub implements a two-tier role system with distinct permissions for administrators and regular users. This ensures secure access to platform resources and operations.
+
+### User Roles
+
+The system supports two user roles defined in the User model:
+
+```javascript src/models/user.model.js
+rol: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user',
+}
+```
+
+### Admin Authorization
+
+Protected routes use middleware to restrict admin-only operations:
+
+```javascript src/middlewares/auth.middleware.js
+exports.restrictToAdmin = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.userId).select('-password');
+    if (user.rol === 'user') {
+      return next(new ApiError(403, 'No tienes permisos para realizar esta acción'));
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+<Info>
+Admin users can manage all games, users, and subscriptions, while regular users have access limited to their subscription plan and purchased games.
+</Info>
+
+---
+
+## Subscription Management
+
+GameHub offers a flexible subscription system with three distinct plans, each providing different levels of access to the game library.
+
+### Subscription Types
+
+The platform supports three subscription tiers:
+
+```javascript src/models/subscription.types.model.js
+name: {
+    type: String,
+    required: [true, 'El nombre del plan es obligatorio'],
+    enum: ['trial', 'monthly', 'annual'],  
+},
+price: {
+    type: Number,
+    required: [true, 'El precio es obligatorio'],
+},
+duration: {
+    type: Number,  
+    required: [true, 'La duración del plan es obligatoria'],
+}
+```
+
+### Subscription Features
+
+<CardGroup cols={3}>
+  <Card title="Trial Plan" icon="clock">
+    Free limited-time access to explore the platform
+  </Card>
+  <Card title="Monthly Plan" icon="calendar-days">
+    Monthly recurring subscription with full access
+  </Card>
+  <Card title="Annual Plan" icon="calendar">
+    Annual subscription with extended benefits
+  </Card>
+</CardGroup>
+
+<Note>
+Users can subscribe to plans through the `/api/v1/sub/subscribe` endpoint, while administrators can assign plans to any user via `/api/v1/sub/assign`.
+</Note>
+
+---
+
+## Game Library System
+
+Each user maintains a personal game library that tracks games acquired through purchases or subscriptions. The library system automatically updates based on user transactions and active subscription plans.
+
+### Library Model
+
+Games in a user's library are tracked with access type information:
+
+```javascript src/models/biblioteca.model.js
+const bibliotecaSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+    },
+    videojuego: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Videojuego',
+        required: true,
+    },
+    accessType: {
+        type: String,
+        enum: ['purchase', 'subscription'],
+        required: true,
+    },
+    addedAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+```
+
+### Game Access Types
+
+Games can be accessed through two methods:
+
+- **Purchase**: Permanent access to the game after one-time payment
+- **Subscription**: Access granted while subscription is active
+
+<Info>
+The library automatically manages game access based on subscription status, ensuring users only access games according to their current plan.
+</Info>
+
+---
+
+## JWT Authentication
+
+GameHub uses JSON Web Tokens (JWT) for secure, stateless authentication. Tokens are stored in HTTP-only cookies to prevent XSS attacks.
+
+### Token Generation
+
+When users authenticate, a JWT token is created and sent as a secure cookie:
+
+```javascript src/helpers/auth.helper.js
+const signToken = (id) => {
+    return jwt.sign({ id }, process.env.JWT_SECRET, {
+        expiresIn: '1d',
+    });
+};
+
+exports.createSendToken = (user, statusCode, res) => {
+    const token = signToken(user._id);
+    const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+        path: '/',
+        maxAge: 24 * 60 * 60 * 1000,
+    };
+    res.cookie('token', token, cookieOptions);
+    res.status(statusCode).json({
+        status: 'success',
+        token,
+        data: { user },
+    });
+};
+```
+
+### Token Verification
+
+Protected routes verify the JWT token from cookies:
+
+```javascript src/middlewares/auth.middleware.js
+exports.protect = (req, res, next) => {
+  let token
+  if (req.cookies && req.cookies.token) {
+    token = req.cookies.token
+  }
+  if (!token) {
+    throw new ApiError(404, 'Not authorized, no token')
+  }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    req.userId = decoded.id
+    next()
+  }
+  catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      throw new ApiError(401, 'Session expired, please log in again')
+    } else if (error.name === 'JsonWebTokenError') {
+      throw new ApiError(401, 'Invalid token, please log in again')
+    } else {
+      throw new ApiError(401, 'Not authorized, token failed')
+    }
+  }
+}
+```
+
+<Note>
+Tokens expire after 24 hours and include comprehensive error handling for expired or invalid tokens.
+</Note>
+
+---
+
+## File Upload Support
+
+GameHub includes built-in file upload functionality using Multer, enabling administrators to upload game images and cover art.
+
+### Upload Configuration
+
+The upload middleware handles image storage and file naming:
+
+```javascript src/middlewares/upload.middleware.js
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadPath = 'public/images' 
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true })
+        }
+        cb(null, uploadPath)
+    },
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname)
+        cb(null, `${file.fieldname}-${Date.now()}${ext}`)
+    }
+})
+const upload = multer({ storage })
+```
+
+### Usage in Routes
+
+File uploads are integrated into game management endpoints:
+
+```javascript src/routes/videojuego.router.js
+videojuegoRouter.post('/add', protect, restrictToAdmin, upload.single('image'), 
+    videojuegoController.agregarVideojuego);
+videojuegoRouter.patch('/update/:videojuegoId', protect, restrictToAdmin, upload.single('image'), 
+    videojuegoController.editarVideojuego);
+```
+
+<Info>
+Images are automatically stored in the `public/images` directory with timestamped filenames to prevent conflicts.
+</Info>
+
+---
+
+## OpenAPI Documentation
+
+GameHub provides complete API documentation using Swagger/OpenAPI specification, making it easy for developers to understand and integrate with the platform.
+
+### Swagger Configuration
+
+The API documentation is auto-generated and environment-aware:
+
+```javascript src/config/swagger.config.js
+const swaggerDocument = YAML.load(path.resolve(__dirname, './swagger.yaml'));
+
+const configureSwaggerServers = () => {
+    const env = process.env.NODE_ENV || 'development';
+    const servers = [];
+
+    if (env === 'development') {
+        servers.push({
+            url: `http://localhost:${process.env.PORT || 3000}/api/v1/`,
+            description: 'Servidor de desarrollo'
+        });
+    }
+    else if (env === 'production') {
+        servers.push({
+            url: process.env.HOST_BACKEND,
+            description: 'Servidor de producción'
+        });
+    }
+    swaggerDocument.servers = servers;
+};
+
+module.exports = (app) => {
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+};
+```
+
+### Accessing Documentation
+
+Once the server is running, access the interactive API documentation at:
+
+- **Development**: `http://localhost:3000/api-docs`
+- **Production**: `{HOST_BACKEND}/api-docs`
+
+<Note>
+The Swagger UI provides interactive documentation where you can test API endpoints directly from your browser.
+</Note>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="right-to-bracket" href="/authentication/overview">
+    Learn how to authenticate and manage user sessions
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/auth/signup">
+    Explore the complete API endpoint documentation
+  </Card>
+  <Card title="Games Management" icon="gamepad" href="/api-reference/games/list-games">
+    Discover how to manage games and libraries
+  </Card>
+  <Card title="Subscriptions" icon="credit-card" href="/concepts/subscription-system">
+    Understand subscription plans and management
+  </Card>
+</CardGroup>

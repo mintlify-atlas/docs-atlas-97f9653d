@@ -1,0 +1,100 @@
+---
+title: "List Subscription Plans"
+api: "GET /sub"
+description: "Retrieve all available subscription plan types"
+---
+
+Retrieves a list of all subscription plans available in the GameHub platform. This endpoint returns information about trial, monthly, and annual subscription types including their pricing and duration.
+
+## Authentication
+
+Requires a valid JWT token in the Authorization header.
+
+```bash
+Authorization: Bearer <token>
+```
+
+## Subscription Types
+
+GameHub offers three subscription plans:
+
+- **trial** - Free trial period (typically 7 days)
+- **monthly** - Monthly subscription with 30-day duration
+- **annual** - Annual subscription with 365-day duration
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status indicator
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="subs" type="array">
+  Array of subscription type objects
+  
+  <Expandable title="SubscriptionType properties">
+    <ResponseField name="_id" type="string">
+      Unique identifier for the subscription type
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Subscription plan name (trial, monthly, or annual)
+    </ResponseField>
+    
+    <ResponseField name="price" type="number">
+      Price of the subscription in USD
+    </ResponseField>
+    
+    <ResponseField name="duration" type="integer">
+      Duration of the subscription in days
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp of when the subscription type was created
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+```json
+{
+  "status": "success",
+  "message": "Suscripción asignada correctamente",
+  "subs": [
+    {
+      "_id": "60f6c5b7f58a5c6d09fa1a30",
+      "name": "trial",
+      "price": 0,
+      "duration": 7,
+      "createdAt": "2024-10-24T23:29:02.579Z"
+    },
+    {
+      "_id": "60f6c5b7f58a5c6d09fa1a31",
+      "name": "monthly",
+      "price": 9.99,
+      "duration": 30,
+      "createdAt": "2024-10-24T23:29:02.579Z"
+    },
+    {
+      "_id": "60f6c5b7f58a5c6d09fa1a32",
+      "name": "annual",
+      "price": 99.99,
+      "duration": 365,
+      "createdAt": "2024-10-24T23:29:02.579Z"
+    }
+  ]
+}
+```
+</ResponseExample>
+
+## How Subscriptions Affect Game Access
+
+Active subscriptions grant users access to:
+- All games marked as available via subscription
+- Ability to add subscription-based games to their library
+- Full game details and download access
+
+Users without an active subscription can only access games they've purchased individually.

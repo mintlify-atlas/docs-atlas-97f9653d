@@ -1,0 +1,49 @@
+---
+title: "Logout"
+description: "End the user session and clear authentication token"
+---
+
+## GET /auth/logout
+
+Logs out the current user by clearing the authentication token cookie.
+
+### Authentication
+
+No authentication required.
+
+### Request Parameters
+
+No parameters required.
+
+### Response
+
+<ResponseField name="message" type="string">
+  Confirmation message indicating successful logout
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://api.gamehub.com/auth/logout
+```
+
+### Example Response
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+### Error Responses
+
+<ResponseField name="500" type="error">
+  **Internal Server Error** - Server error occurred
+  
+  ```json
+  {
+    "status": "error",
+    "message": "Internal server error"
+  }
+  ```
+</ResponseField>

@@ -1,0 +1,137 @@
+---
+title: "Create User"
+api: "POST /user"
+description: "Create a new user in the system"
+---
+
+## Authentication
+
+This endpoint requires authentication via Bearer token and **admin access**.
+
+<Warning>
+  This endpoint is restricted to administrators only. Regular users will receive a 403 Forbidden response.
+</Warning>
+
+## Request
+
+### Body Parameters
+
+<ParamField body="name" type="string" required>
+  Full name of the user
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Email address for the user. Must be unique.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Password for the user account. Will be hashed before storage.
+</ParamField>
+
+<ParamField body="rol" type="string" default="user">
+  Role for the user. Valid values are "user" or "admin".
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://api.gamehub.com/user \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "password": "securePassword123",
+    "rol": "user"
+  }'
+```
+
+## Response
+
+<ResponseField name="status" type="string">
+  Status of the request ("success")
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Container object for the response data
+  
+  <ResponseField name="user" type="object">
+    The newly created user object
+    
+    <ResponseField name="_id" type="string">
+      Unique identifier for the user
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Full name of the user
+    </ResponseField>
+    
+    <ResponseField name="email" type="string">
+      Email address of the user
+    </ResponseField>
+    
+    <ResponseField name="rol" type="string">
+      User role - either "user" or "admin"
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp when the user was created
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+### Success Response (201)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "user": {
+      "_id": "60f6c5b7f58a5c6d09fa1a29",
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "rol": "user",
+      "createdAt": "2024-11-01T10:30:00.000Z"
+    }
+  }
+}
+```
+
+<Note>
+  The password field is not returned in the response for security reasons.
+</Note>
+
+## Error Responses
+
+### 403 Forbidden
+
+Returned when a non-admin user attempts to access this endpoint.
+
+```json
+{
+  "status": "error",
+  "message": "No autorizado, solo accesible para administradores"
+}
+```
+
+### 400 Bad Request
+
+Returned when required fields are missing or validation fails.
+
+```json
+{
+  "status": "error",
+  "message": "Faltan el correo o la contraseña"
+}
+```
+
+### 401 Unauthorized
+
+Returned when the authentication token is missing or invalid.
+
+```json
+{
+  "status": "error",
+  "message": "No autorizado, token inválido o faltante"
+}
+```

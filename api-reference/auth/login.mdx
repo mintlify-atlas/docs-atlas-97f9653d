@@ -1,0 +1,76 @@
+---
+title: "Login"
+description: "Authenticate a user and get an access token"
+---
+
+## POST /auth/login
+
+Authenticates a user with email and password, returning a JWT token for subsequent requests.
+
+### Authentication
+
+No authentication required.
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  The user's email address
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The user's password
+</ParamField>
+
+### Response
+
+<ResponseField name="status" type="string">
+  Status of the response ("success")
+</ResponseField>
+
+<ResponseField name="token" type="string">
+  JWT authentication token for the authenticated user
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X POST https://api.gamehub.com/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "pedrorc2018@gmail.com",
+    "password": "password123"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+}
+```
+
+### Error Responses
+
+<ResponseField name="400" type="error">
+  **Bad Request** - Missing email or password
+  
+  ```json
+  {
+    "status": "error",
+    "message": "Por favor, ingrese correo y contraseña"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="401" type="error">
+  **Unauthorized** - Invalid email or password
+  
+  ```json
+  {
+    "status": "error",
+    "message": "Por favor, ingrese correo y contraseña"
+  }
+  ```
+</ResponseField>

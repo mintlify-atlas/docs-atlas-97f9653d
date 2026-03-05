@@ -1,0 +1,192 @@
+---
+title: "Add to Library"
+api: "POST /library/add"
+description: "Add a game to the user's library with specified access type"
+---
+
+Allows an authenticated user to add a game to their library. The game can be added either through purchase or subscription access.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+  
+  Example: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+</ParamField>
+
+## Request Body
+
+<ParamField body="videojuegoId" type="string" required>
+  The unique identifier of the game to add to the library
+  
+  Example: `"60f6c5b7f58a5c6d09fa1a28"`
+</ParamField>
+
+<ParamField body="accessType" type="string" required>
+  The type of access for this game
+  
+  **Options:**
+  - `subscription` - Game accessed through active subscription
+  - `purchase` - Game purchased permanently
+  
+  Example: `"subscription"`
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status indicator
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Container for the response data
+  
+  <Expandable title="data object">
+    <ResponseField name="biblioteca" type="object">
+      The newly created library entry
+      
+      <Expandable title="Library Entry">
+        <ResponseField name="_id" type="string">
+          Unique identifier for the library entry
+        </ResponseField>
+        
+        <ResponseField name="user" type="string">
+          User ID who owns this library entry
+        </ResponseField>
+        
+        <ResponseField name="videojuego" type="string">
+          Game ID that was added
+        </ResponseField>
+        
+        <ResponseField name="accessType" type="string">
+          Type of access (purchase or subscription)
+        </ResponseField>
+        
+        <ResponseField name="addedAt" type="string">
+          Timestamp when game was added (ISO 8601 format)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl --request POST \
+  --url https://api.gamehub.com/library/add \
+  --header 'Authorization: Bearer YOUR_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "videojuegoId": "60f6c5b7f58a5c6d09fa1a28",
+    "accessType": "subscription"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.gamehub.com/library/add', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    videojuegoId: '60f6c5b7f58a5c6d09fa1a28',
+    accessType: 'subscription'
+  })
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.gamehub.com/library/add',
+    headers={
+        'Authorization': 'Bearer YOUR_TOKEN',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'videojuegoId': '60f6c5b7f58a5c6d09fa1a28',
+        'accessType': 'subscription'
+    }
+)
+
+data = response.json()
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response (201)
+{
+  "status": "success",
+  "data": {
+    "biblioteca": {
+      "_id": "60f6c5b7f58a5c6d09fa1a28",
+      "user": "60f6c5b7f58a5c6d09fa1a29",
+      "videojuego": "60f6c5b7f58a5c6d09fa1a27",
+      "accessType": "subscription",
+      "addedAt": "2024-10-30T00:46:57.826Z"
+    }
+  }
+}
+```
+
+```json Error - Already Exists (400)
+{
+  "status": "fail",
+  "message": "Ya posees este juego con el método de acceso \"subscription\"."
+}
+```
+
+```json Error - Different Access Type (400)
+{
+  "status": "fail",
+  "message": "Ya has adquirido este juego con el método de acceso \"purchase\"."
+}
+```
+
+```json Error - Subscription Required (403)
+{
+  "status": "fail",
+  "message": "no tienes acceso a estos videojuegos, adquiere una subscripcion"
+}
+```
+</ResponseExample>
+
+## Access Control
+
+### Subscription Access
+When adding a game with `accessType: "subscription"`:
+- User must have an active subscription
+- Trial subscription users cannot add subscription games
+- Access is tied to subscription status
+
+### Purchase Access
+When adding a game with `accessType: "purchase"`:
+- User permanently owns the game
+- No subscription required
+- Access is permanent regardless of subscription status
+
+## Validation Rules
+
+1. **Duplicate Prevention**: Users cannot add the same game twice, even with different access types
+2. **Subscription Validation**: Trial users are blocked from adding subscription games
+3. **Access Type Enforcement**: The access type must match one of the game's available access methods
+
+## Error Codes
+
+| Status | Description |
+|--------|-------------|
+| 201 | Game successfully added to library |
+| 400 | Game already exists in library |
+| 403 | User lacks required subscription for subscription access |
+| 404 | Game not found |
+
+## Implementation Notes
+
+- Controller: `src/controllers/biblioteca.controller.js:6` (`agregarJuegoABiblioteca`)
+- Route: `POST /library/add` (protected)
+- The endpoint checks subscription status before allowing subscription-based game additions
+- Duplicate entries are prevented at the application level

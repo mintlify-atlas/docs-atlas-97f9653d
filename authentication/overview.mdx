@@ -1,0 +1,189 @@
+---
+title: 'Authentication Overview'
+description: 'Learn how authentication works in the GameHub API'
+---
+
+## Introduction
+
+The GameHub API uses a secure JWT-based authentication system to protect endpoints and manage user access. All authenticated requests require a valid JWT token that is automatically stored in HTTP-only cookies.
+
+## Authentication Flow
+
+<Steps>
+  <Step title="User Registration">
+    Users create an account by providing their name, email, password, and optionally a role (defaults to 'user').
+  </Step>
+  <Step title="Token Generation">
+    Upon successful registration or login, the server generates a JWT token containing the user's ID.
+  </Step>
+  <Step title="Token Storage">
+    The token is automatically stored in an HTTP-only cookie for security and sent back in the response.
+  </Step>
+  <Step title="Protected Requests">
+    Subsequent requests include the cookie automatically, which is validated by the authentication middleware.
+  </Step>
+</Steps>
+
+## Authentication Endpoints
+
+### POST /auth/signup
+
+Create a new user account.
+
+**Request Body:**
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "securePassword123",
+  "rol": "user" // Optional: 'user' or 'admin', defaults to 'user'
+}
+```
+
+**Response (201):**
+```json
+{
+  "status": "success",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "data": {
+    "user": {
+      "_id": "507f1f77bcf86cd799439011",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "rol": "user",
+      "createdAt": "2024-01-15T10:30:00.000Z"
+    }
+  }
+}
+```
+
+### POST /auth/login
+
+Authenticate an existing user.
+
+**Request Body:**
+```json
+{
+  "email": "john@example.com",
+  "password": "securePassword123"
+}
+```
+
+**Response (200):**
+```json
+{
+  "status": "success",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "data": {
+    "user": {
+      "_id": "507f1f77bcf86cd799439011",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "rol": "user"
+    }
+  }
+}
+```
+
+### POST /auth/logout
+
+Log out the current user by clearing the authentication cookie.
+
+**Response (200):**
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+### GET /auth/me
+
+Get information about the currently authenticated user.
+
+**Response (200):**
+```json
+{
+  "status": "success",
+  "user": {
+    "_id": "507f1f77bcf86cd799439011",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "rol": "user",
+    "createdAt": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+## Security Features
+
+<CardGroup cols={2}>
+  <Card title="Password Hashing" icon="lock">
+    All passwords are hashed using bcrypt with a salt factor of 10 before storage.
+  </Card>
+  <Card title="HTTP-Only Cookies" icon="cookie">
+    JWT tokens are stored in HTTP-only cookies to prevent XSS attacks.
+  </Card>
+  <Card title="Secure Cookies" icon="shield">
+    Cookies use secure flag in production and SameSite protection.
+  </Card>
+  <Card title="Token Expiration" icon="clock">
+    JWT tokens automatically expire after 24 hours for enhanced security.
+  </Card>
+</CardGroup>
+
+## Error Handling
+
+The authentication system provides clear error messages:
+
+<Warning>
+  **Common Authentication Errors:**
+  - `400`: Missing email or password
+  - `401`: Invalid credentials or expired token
+  - `403`: Insufficient permissions (role-based)
+  - `404`: User not found or no token provided
+</Warning>
+
+## Implementation Example
+
+Here's how the signup controller works:
+
+```javascript src/controllers/auth.controller.js
+const { createSendToken } = require('../helpers/auth.helper');
+
+exports.signup = catchAsync(async (req, res, next) => {
+    const { name, email, password, rol } = req.body;
+    const newUser = await User.create({ name, email, password, rol });
+    createSendToken(newUser, 201, res);
+});
+```
+
+And the login controller:
+
+```javascript src/controllers/auth.controller.js
+exports.login = catchAsync(async (req, res, next) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        throw new ApiError(400, 'Por favor, ingrese correo y contraseña');
+    }
+    const user = await User.findOne({ email }).select('+password');
+    if (!user || !(await user.matchPassword(password, user.password))) {
+        throw new ApiError(401, 'Por favor, ingrese correo y contraseña');
+    }
+    createSendToken(user, 200, res);
+});
+```
+
+<Note>
+  The password is excluded from normal queries using `select: false` in the User model and must be explicitly selected when needed for authentication.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="JWT Tokens" icon="key" href="/authentication/jwt-tokens">
+    Learn how JWT tokens are generated and validated
+  </Card>
+  <Card title="Roles & Permissions" icon="users" href="/authentication/roles-permissions">
+    Understand the role-based access control system
+  </Card>
+</CardGroup>

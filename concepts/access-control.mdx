@@ -1,0 +1,373 @@
+---
+title: 'Access Control'
+description: 'Understand GameHub authentication, authorization, and role-based access control mechanisms'
+---
+
+## Overview
+
+GameHub implements a comprehensive access control system that combines JWT-based authentication, role-based authorization, and subscription-based content access. This multi-layered approach ensures secure and appropriate access to platform resources.
+
+## Authentication Layer
+
+### JWT Token-Based Authentication
+
+GameHub uses JSON Web Tokens (JWT) for stateless authentication:
+
+```javascript
+// Authentication middleware from auth.middleware.js
+exports.protect = (req, res, next) => {
+  let token
+  if (req.cookies && req.cookies.token) {
+    token = req.cookies.token
+  }
+  if (!token) {
+    throw new ApiError(404, 'Not authorized, no token')
+  }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    req.userId = decoded.id
+    next()
+  }
+  catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      throw new ApiError(401, 'Session expired, please log in again')
+    } else if (error.name === 'JsonWebTokenError') {
+      throw new ApiError(401, 'Invalid token, please log in again')
+    } else {
+      throw new ApiError(401, 'Not authorized, token failed')
+    }
+  }
+}
+```
+
+### Token Flow
+
+1. **Login**: User provides credentials
+2. **Verification**: System validates email and password
+3. **Token Generation**: JWT created with user ID payload
+4. **Cookie Storage**: Token stored in HTTP-only cookie
+5. **Request Authentication**: Token verified on each protected request
+
+<Note>
+Tokens are stored in HTTP-only cookies for enhanced security against XSS attacks.
+</Note>
+
+### Authentication Endpoints
+
+#### Signup
+
+```javascript
+POST /api/auth/signup
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "securePassword123",
+  "rol": "user"  // optional, defaults to 'user'
+}
+```
+
+#### Login
+
+```javascript
+POST /api/auth/login
+{
+  "email": "john@example.com",
+  "password": "securePassword123"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "_id": "507f191e810c19729de860ea",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "rol": "user"
+  }
+}
+```
+
+#### Logout
+
+```javascript
+POST /api/auth/logout
+```
+
+Clears the authentication cookie and invalidates the session.
+
+## Authorization Layer
+
+### User Roles
+
+GameHub implements two distinct user roles:
+
+<CardGroup cols={2}>
+  <Card title="User" icon="user">
+    Standard platform access with subscription-based content restrictions
+  </Card>
+  <Card title="Admin" icon="user-shield">
+    Full platform access with administrative privileges
+  </Card>
+</CardGroup>
+
+### User Model
+
+```javascript
+const UserSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: [true, 'El nombre es obligatorio'],
+    },
+    email: {
+        type: String,
+        required: [true, 'El correo es obligatorio'],
+        unique: true,
+        lowercase: true,
+    },
+    password: {
+        type: String,
+        required: [true, 'La contraseña es obligatoria'],
+        minlength: 6,
+        select: false,  // Password excluded by default
+    },
+    rol: {
+        type: String,
+        enum: ['user', 'admin'],
+        default: 'user',
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+```
+
+### Password Security
+
+Passwords are hashed before storage using bcrypt:
+
+```javascript
+UserSchema.pre('save', async function (next) {
+    if (!this.isModified('password')) {
+        return next();
+    }
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+});
+
+UserSchema.methods.matchPassword = async function (enteredPassword) {
+    return await bcrypt.compare(enteredPassword, this.password);
+};
+```
+
+<Warning>
+Passwords are never returned in API responses. The password field has `select: false` by default.
+</Warning>
+
+### Admin Restriction Middleware
+
+Protects administrative endpoints:
+
+```javascript
+exports.restrictToAdmin = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.userId).select('-password');
+    if (user.rol === 'user') {
+      return next(new ApiError(403, 'No tienes permisos para realizar esta acción'));
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+## Content Access Control
+
+### Subscription-Based Access
+
+Access to games is controlled based on subscription status and type:
+
+#### Access Matrix
+
+| Subscription Type | Trial Games | Subscription Games | Purchase Games |
+|-------------------|-------------|-------------------|----------------|
+| **No Subscription** | ❌ | ❌ | ✅ |
+| **Trial (Inactive)** | ❌ | ❌ | ✅ |
+| **Trial (Active)** | ✅ | ❌ | ✅ |
+| **Monthly** | ✅ | ✅ | ✅ |
+| **Annual** | ✅ | ✅ | ✅ |
+| **Admin** | ✅ | ✅ | ✅ |
+
+### Game Access Validation
+
+From `videojuego.controller.js`, access is determined by game configuration:
+
+```javascript
+if (subscription && !purchase) {
+    // Subscription-only game
+    if (req.user.subscription.type === 'monthly' || req.user.subscription.type === 'annual') {
+        // Grant access
+    } else {
+        // Deny access
+        res.status(403).json({
+            status: 'fail',
+            message: 'Este juego solo está disponible mediante suscripción.'
+        });
+    }
+}
+else if (purchase && !subscription) {
+    // Purchase-only game - check if user has purchased
+    const hasPurchased = req.user.purchasedGames.includes(videojuegoId);
+    // ...
+}
+else if (subscription && purchase) {
+    // Dual access - check subscription OR purchase
+    // ...
+}
+```
+
+### Library Access Validation
+
+When adding games to library, subscription is validated:
+
+```javascript
+const user = await SubscribedUser.findOne({ user: req.userId });
+const subscriptionType = await SubscriptionType.findById(user.subscriptionType);
+
+if (!user.isActive && accessType === "subscription" && subscriptionType.name === "trial") {
+    return res.status(403).json({
+        status: 'fail',
+        message: 'no tienes acceso a estos videojuegos, adquiere una subscripcion'
+    });
+}
+```
+
+### Catalog Filtering
+
+The game catalog is filtered based on user subscription:
+
+```javascript
+let videojuegos = await videojuegoService.getAllVideojuegos();
+
+if (user.rol !== "admin") {
+    if (!userSubscription || !userSubscription.isActive) {
+        // Non-subscribed users only see purchasable games
+        videojuegos = videojuegos.filter(
+            (game) => game.accessType.purchase === true
+        );
+    }
+}
+```
+
+<Info>
+Admins bypass all content filtering and can access the complete game catalog.
+</Info>
+
+## Permission Levels
+
+### Public Endpoints
+
+No authentication required:
+- `POST /api/auth/signup`
+- `POST /api/auth/login`
+
+### Protected Endpoints
+
+Require valid JWT token (`protect` middleware):
+- `GET /api/auth/info`
+- `GET /api/biblioteca`
+- `POST /api/biblioteca`
+- `GET /api/videojuegos`
+- `POST /api/subscriptions/subscribe`
+- `DELETE /api/subscriptions/cancel`
+
+### Admin-Only Endpoints
+
+Require both authentication and admin role (`protect` + `restrictToAdmin`):
+- `POST /api/videojuegos` - Add new games
+- `PATCH /api/videojuegos/:id` - Edit games
+- `DELETE /api/videojuegos/:id` - Delete games
+- `POST /api/subscriptions/assign` - Assign subscriptions
+- `DELETE /api/subscriptions/cancel-assigned` - Cancel user subscriptions
+
+## Error Responses
+
+### Authentication Errors
+
+**No Token:**
+```json
+{
+  "status": "error",
+  "message": "Not authorized, no token"
+}
+```
+
+**Expired Token:**
+```json
+{
+  "status": "error",
+  "message": "Session expired, please log in again"
+}
+```
+
+**Invalid Token:**
+```json
+{
+  "status": "error",
+  "message": "Invalid token, please log in again"
+}
+```
+
+### Authorization Errors
+
+**Insufficient Permissions:**
+```json
+{
+  "status": "error",
+  "message": "No tienes permisos para realizar esta acción"
+}
+```
+
+**Subscription Required:**
+```json
+{
+  "status": "fail",
+  "message": "no tienes acceso a estos videojuegos, adquiere una subscripcion"
+}
+```
+
+## Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Token Storage">
+    Tokens are stored in HTTP-only cookies to prevent XSS attacks. Never store tokens in localStorage.
+  </Accordion>
+  
+  <Accordion title="Password Handling">
+    Passwords are hashed using bcrypt with salt rounds before storage. Plain text passwords are never stored.
+  </Accordion>
+  
+  <Accordion title="Token Expiration">
+    JWT tokens include expiration timestamps. Expired tokens are automatically rejected.
+  </Accordion>
+  
+  <Accordion title="Role Validation">
+    User roles are verified on each admin request by querying the database, not by trusting JWT claims alone.
+  </Accordion>
+</AccordionGroup>
+
+## Related Concepts
+
+<CardGroup cols={2}>
+  <Card title="Subscription System" icon="credit-card" href="/concepts/subscription-system">
+    Learn how subscriptions enable content access
+  </Card>
+  <Card title="Game Library" icon="books" href="/concepts/game-library">
+    Understand how library access is controlled
+  </Card>
+</CardGroup>

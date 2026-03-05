@@ -1,0 +1,175 @@
+---
+title: "Cancel Own Subscription"
+api: "POST /sub/cancel"
+description: "Cancel the authenticated user's active subscription"
+---
+
+Allows an authenticated user to cancel their own active subscription. This immediately deactivates the subscription and sets the end date to the current time, revoking access to subscription-based games.
+
+## Authentication
+
+Requires a valid JWT token in the Authorization header.
+
+```bash
+Authorization: Bearer <token>
+```
+
+## Request
+
+This endpoint does not require a request body. The user to cancel is determined from the authentication token.
+
+## Behavior
+
+- Sets the subscription's `isActive` field to `false`
+- Updates the `endDate` to the current timestamp
+- User immediately loses access to subscription-based games
+- Purchased games remain accessible
+- Games added to library via subscription will no longer be accessible
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status indicator
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="data properties">
+    <ResponseField name="subscription" type="object">
+      The cancelled subscription object
+      
+      <Expandable title="subscription properties">
+        <ResponseField name="_id" type="string">
+          Unique identifier for the subscription
+        </ResponseField>
+        
+        <ResponseField name="user" type="string">
+          User ID of the subscriber
+        </ResponseField>
+        
+        <ResponseField name="subscriptionType" type="string">
+          ID of the subscription type
+        </ResponseField>
+        
+        <ResponseField name="isActive" type="boolean">
+          Whether the subscription is currently active (false after cancellation)
+        </ResponseField>
+        
+        <ResponseField name="startDate" type="string">
+          ISO 8601 timestamp of when the subscription originally started
+        </ResponseField>
+        
+        <ResponseField name="endDate" type="string">
+          ISO 8601 timestamp set to the current time (cancellation time)
+        </ResponseField>
+        
+        <ResponseField name="activatedBy" type="string">
+          User ID of who originally activated the subscription
+        </ResponseField>
+        
+        <ResponseField name="createdAt" type="string">
+          ISO 8601 timestamp of when the subscription record was created
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.gamehub.com/sub/cancel \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.gamehub.com/sub/cancel', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.gamehub.com/sub/cancel',
+    headers={'Authorization': f'Bearer {token}'}
+)
+
+data = response.json()
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "status": "success",
+  "message": "Suscripción cancelada correctamente",
+  "data": {
+    "subscription": {
+      "_id": "60f6c5b7f58a5c6d09fa1a31",
+      "user": "60f6c5b7f58a5c6d09fa1a27",
+      "subscriptionType": "60f6c5b7f58a5c6d09fa1a30",
+      "isActive": false,
+      "startDate": "2026-03-05T10:00:00.000Z",
+      "endDate": "2026-03-05T14:30:00.000Z",
+      "activatedBy": "60f6c5b7f58a5c6d09fa1a27",
+      "createdAt": "2026-03-05T10:00:00.000Z"
+    }
+  }
+}
+```
+
+```json 404 - No Active Subscription
+{
+  "status": "error",
+  "message": "No tienes una suscripción activa"
+}
+```
+</ResponseExample>
+
+## Impact on Game Access
+
+When a subscription is cancelled:
+
+<CardGroup cols={2}>
+  <Card title="Lost Access" icon="ban">
+    - Subscription-based games in library
+    - Ability to add new subscription games
+    - Subscription-exclusive content
+  </Card>
+  
+  <Card title="Retained Access" icon="check">
+    - Individually purchased games
+    - Game save data and progress
+    - User account and profile
+  </Card>
+</CardGroup>
+
+## Example Scenario
+
+A user subscribes to a monthly plan on March 5, 2026 at 10:00 AM:
+- **Start Date**: 2026-03-05T10:00:00.000Z
+- **Original End Date**: 2026-04-04T10:00:00.000Z
+- **isActive**: true
+
+The user cancels on March 5, 2026 at 2:30 PM:
+- **Start Date**: 2026-03-05T10:00:00.000Z (unchanged)
+- **New End Date**: 2026-03-05T14:30:00.000Z (current time)
+- **isActive**: false
+
+The user's subscription period lasted only 4.5 hours instead of the full 30 days.
+
+## Important Notes
+
+- Cancellation is immediate - no refunds are processed through this endpoint
+- Users can subscribe again after cancellation
+- To change plans, users must cancel current subscription first, then subscribe to a new plan
+- This endpoint does NOT require admin privileges

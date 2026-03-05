@@ -1,0 +1,100 @@
+---
+title: "Delete User"
+api: "DELETE /user/{id}"
+description: "Delete a user from the system"
+---
+
+## Authentication
+
+This endpoint requires authentication via Bearer token and **admin access**.
+
+<Warning>
+  This endpoint is restricted to administrators only. Regular users will receive a 403 Forbidden response. This action is permanent and cannot be undone.
+</Warning>
+
+## Request
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the user to delete
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE https://api.gamehub.com/user/60f6c5b7f58a5c6d09fa1a27 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## Response
+
+### Success Response (204)
+
+A successful deletion returns a 204 No Content status with no response body.
+
+```json
+{
+  "status": "success",
+  "message": "Usuario eliminado"
+}
+```
+
+<Info>
+  According to REST conventions, a 204 status typically has no response body. However, this API returns a confirmation message.
+</Info>
+
+## Error Responses
+
+### 404 Not Found
+
+Returned when the user with the specified ID does not exist.
+
+```json
+{
+  "status": "error",
+  "message": "Usuario no encontrado"
+}
+```
+
+### 403 Forbidden
+
+Returned when a non-admin user attempts to delete a user.
+
+```json
+{
+  "status": "error",
+  "message": "No autorizado, solo accesible para administradores"
+}
+```
+
+### 401 Unauthorized
+
+Returned when the authentication token is missing or invalid.
+
+```json
+{
+  "status": "error",
+  "message": "No autorizado, token inválido o faltante"
+}
+```
+
+### 400 Bad Request
+
+Returned when the provided user ID is not a valid format.
+
+```json
+{
+  "status": "error",
+  "message": "ID de usuario inválido"
+}
+```
+
+## Side Effects
+
+<Warning>
+  Deleting a user may have cascading effects:
+  - All user subscriptions will be cancelled
+  - The user's game library will be removed
+  - Any user-specific data will be permanently deleted
+</Warning>

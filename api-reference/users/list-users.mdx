@@ -1,0 +1,104 @@
+---
+title: "List Users"
+api: "GET /user"
+description: "Retrieve a list of all users in the system"
+---
+
+## Authentication
+
+This endpoint requires authentication via Bearer token and **admin access**.
+
+<Warning>
+  This endpoint is restricted to administrators only. Regular users will receive a 403 Forbidden response.
+</Warning>
+
+## Request
+
+```bash
+curl -X GET https://api.gamehub.com/user \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## Response
+
+<ResponseField name="status" type="string">
+  Status of the request ("success")
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Container object for the response data
+  
+  <ResponseField name="users" type="array">
+    Array of user objects
+    
+    <ResponseField name="_id" type="string">
+      Unique identifier for the user
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Full name of the user
+    </ResponseField>
+    
+    <ResponseField name="email" type="string">
+      Email address of the user
+    </ResponseField>
+    
+    <ResponseField name="rol" type="string">
+      User role - either "user" or "admin"
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp when the user was created
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+### Success Response (200)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "users": [
+      {
+        "_id": "60f6c5b7f58a5c6d09fa1a27",
+        "name": "pedro luis",
+        "email": "pedrorc2018@gmail.com",
+        "rol": "user",
+        "createdAt": "2024-10-25T00:03:01.415Z"
+      },
+      {
+        "_id": "60f6c5b7f58a5c6d09fa1a28",
+        "name": "admin user",
+        "email": "admin@gamehub.com",
+        "rol": "admin",
+        "createdAt": "2024-10-24T15:20:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+## Error Responses
+
+### 403 Forbidden
+
+Returned when a non-admin user attempts to access this endpoint.
+
+```json
+{
+  "status": "error",
+  "message": "No autorizado, solo accesible para administradores"
+}
+```
+
+### 401 Unauthorized
+
+Returned when the authentication token is missing or invalid.
+
+```json
+{
+  "status": "error",
+  "message": "No autorizado, token inválido o faltante"
+}
+```

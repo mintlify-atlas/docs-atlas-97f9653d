@@ -1,0 +1,154 @@
+---
+title: "Update User"
+api: "PATCH /user/{id}"
+description: "Update an existing user's information"
+---
+
+## Authentication
+
+This endpoint requires authentication via Bearer token. All authenticated users can access this endpoint.
+
+<Info>
+  Users can update their own information. Admins can update any user's information.
+</Info>
+
+## Request
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the user to update
+</ParamField>
+
+### Body Parameters
+
+All body parameters are optional. Only include the fields you want to update.
+
+<ParamField body="name" type="string">
+  Updated full name of the user
+</ParamField>
+
+<ParamField body="email" type="string">
+  Updated email address for the user. Must be unique.
+</ParamField>
+
+<ParamField body="password" type="string">
+  Updated password for the user account. Will be hashed before storage.
+</ParamField>
+
+<ParamField body="rol" type="string">
+  Updated role for the user. Valid values are "user" or "admin". Only admins can change roles.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X PATCH https://api.gamehub.com/user/60f6c5b7f58a5c6d09fa1a27 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Pedro Luis Updated",
+    "email": "pedro.new@example.com"
+  }'
+```
+
+## Response
+
+<ResponseField name="status" type="string">
+  Status of the request ("success")
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Container object for the response data
+  
+  <ResponseField name="user" type="object">
+    The updated user object
+    
+    <ResponseField name="_id" type="string">
+      Unique identifier for the user
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Full name of the user
+    </ResponseField>
+    
+    <ResponseField name="email" type="string">
+      Email address of the user
+    </ResponseField>
+    
+    <ResponseField name="rol" type="string">
+      User role - either "user" or "admin"
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp when the user was created
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+### Success Response (200)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "user": {
+      "_id": "60f6c5b7f58a5c6d09fa1a27",
+      "name": "Pedro Luis Updated",
+      "email": "pedro.new@example.com",
+      "rol": "user",
+      "createdAt": "2024-10-25T00:03:01.415Z"
+    }
+  }
+}
+```
+
+<Note>
+  The password field is not returned in the response for security reasons.
+</Note>
+
+## Error Responses
+
+### 404 Not Found
+
+Returned when the user with the specified ID does not exist.
+
+```json
+{
+  "status": "error",
+  "message": "Usuario no encontrado"
+}
+```
+
+### 401 Unauthorized
+
+Returned when the authentication token is missing or invalid.
+
+```json
+{
+  "status": "error",
+  "message": "No autorizado, token inválido o faltante"
+}
+```
+
+### 403 Forbidden
+
+Returned when a user tries to update another user's information without admin privileges.
+
+```json
+{
+  "status": "error",
+  "message": "No autorizado para actualizar este usuario"
+}
+```
+
+### 400 Bad Request
+
+Returned when the provided data fails validation (e.g., duplicate email).
+
+```json
+{
+  "status": "error",
+  "message": "El correo electrónico ya está en uso"
+}
+```

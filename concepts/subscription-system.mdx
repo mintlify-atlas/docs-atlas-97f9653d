@@ -1,0 +1,224 @@
+---
+title: 'Subscription System'
+description: 'Understand how GameHub manages user subscriptions, billing cycles, and access tiers'
+---
+
+## Overview
+
+GameHub implements a flexible subscription system that provides users with different tiers of access to games. The system supports three subscription types: trial, monthly, and annual plans, each with different pricing and duration.
+
+## Subscription Types
+
+### Schema Definition
+
+Subscription types are defined using the `SubscriptionType` model:
+
+```javascript
+const subscriptionTypeSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: [true, 'El nombre del plan es obligatorio'],
+        enum: ['trial', 'monthly', 'annual'],  
+    },
+    price: {
+        type: Number,
+        required: [true, 'El precio es obligatorio'],
+    },
+    duration: {
+        type: Number,  // in days
+        required: [true, 'La duración del plan es obligatoria'],
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+```
+
+### Available Plans
+
+<CardGroup cols={3}>
+  <Card title="Trial" icon="stopwatch">
+    Limited access plan for new users to test the platform
+  </Card>
+  <Card title="Monthly" icon="calendar">
+    Full access subscription billed monthly
+  </Card>
+  <Card title="Annual" icon="calendar-days">
+    Full access subscription billed annually
+  </Card>
+</CardGroup>
+
+## User Subscriptions
+
+### Subscribed User Model
+
+When a user subscribes to a plan, a `SubscribedUser` record is created:
+
+```javascript
+const subscribedUserSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+    },
+    subscriptionType: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SubscriptionType',
+        required: true,
+    },
+    isActive: {
+        type: Boolean,
+        default: true,
+    },
+    startDate: {
+        type: Date,
+        default: Date.now,
+    },
+    endDate: {
+        type: Date,
+    },
+    activatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+```
+
+### Key Fields
+
+- **user**: Reference to the subscribed user
+- **subscriptionType**: Reference to the subscription plan (trial, monthly, or annual)
+- **isActive**: Boolean indicating if the subscription is currently active
+- **startDate**: When the subscription began
+- **endDate**: When the subscription expires (calculated based on duration)
+- **activatedBy**: User who activated the subscription (for admin assignments)
+
+## Subscription Operations
+
+### Subscribing a User
+
+Users can subscribe themselves, or admins can assign subscriptions:
+
+```javascript
+POST /api/subscriptions/subscribe
+{
+  "subscriptionName": "monthly"
+}
+```
+
+**Business Logic:**
+1. Validates the user exists
+2. Checks the subscription type is valid (trial, monthly, or annual)
+3. Prevents duplicate active subscriptions
+4. Calculates the end date: `startDate + (duration * 24 * 60 * 60 * 1000)`
+5. Creates or updates the subscription record
+
+<Note>
+Users cannot have multiple active subscriptions. The system enforces one active subscription per user.
+</Note>
+
+### Admin Assignment
+
+Admins can assign or modify subscriptions for any user:
+
+```javascript
+POST /api/subscriptions/assign
+{
+  "userId": "507f1f77bcf86cd799439011",
+  "subscriptionTypeId": "annual"
+}
+```
+
+This operation:
+- Requires admin privileges
+- Can update existing subscriptions
+- Sets the `activatedBy` field to track who made the assignment
+
+### Canceling Subscriptions
+
+Users can cancel their own subscriptions:
+
+```javascript
+DELETE /api/subscriptions/cancel
+```
+
+Admins can cancel any user's subscription:
+
+```javascript
+DELETE /api/subscriptions/cancel-assigned
+{
+  "userId": "507f1f77bcf86cd799439011"
+}
+```
+
+**Cancellation Process:**
+1. Sets `isActive` to `false`
+2. Sets `endDate` to the current timestamp
+3. Preserves subscription history for record-keeping
+
+## Access Control Impact
+
+The subscription system directly affects game access:
+
+- **Trial users**: Limited access to subscription-based games
+- **Monthly/Annual users**: Full access to all subscription-based games
+- **Inactive subscriptions**: Prevents access to subscription-only content
+
+### Example Access Check
+
+```javascript
+// From biblioteca.controller.js:14
+if (!user.isActive && accessType === "subscription" && subscriptionType.name ==="trial") {
+    return res.status(403).json({
+        status: 'fail',
+        message: 'no tienes acceso a estos videojuegos, adquiere una subscripcion'
+    });
+}
+```
+
+## Response Examples
+
+### Successful Subscription
+
+```json
+{
+  "status": "success",
+  "message": "Suscripción actualizada o creada exitosamente",
+  "data": {
+    "subscription": {
+      "_id": "507f1f77bcf86cd799439011",
+      "user": "507f191e810c19729de860ea",
+      "subscriptionType": "507f1f77bcf86cd799439012",
+      "isActive": true,
+      "startDate": "2024-01-15T10:30:00.000Z",
+      "endDate": "2024-02-15T10:30:00.000Z",
+      "activatedBy": "507f191e810c19729de860ea"
+    }
+  }
+}
+```
+
+### Duplicate Subscription Error
+
+```json
+{
+  "status": "error",
+  "message": "Ya tienes una suscripción activa"
+}
+```
+
+## Related Concepts
+
+<CardGroup cols={2}>
+  <Card title="Game Library" icon="books" href="/concepts/game-library">
+    Learn how subscriptions interact with game library management
+  </Card>
+  <Card title="Access Control" icon="shield" href="/concepts/access-control">
+    Understand how subscription status affects access permissions
+  </Card>
+</CardGroup>

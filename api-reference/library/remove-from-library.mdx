@@ -1,0 +1,149 @@
+---
+title: "Remove from Library"
+api: "DELETE /library/{bibliotecaId}"
+description: "Remove a game from the user's library"
+---
+
+Allows an authenticated user to remove a game from their personal library. This action is permanent and cannot be undone.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+  
+  Example: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="bibliotecaId" type="string" required>
+  The unique identifier of the library entry to remove
+  
+  Example: `"60f6c5b7f58a5c6d09fa1a28"`
+</ParamField>
+
+## Response
+
+On successful deletion, the API returns a `204 No Content` response with no body.
+
+<RequestExample>
+```bash cURL
+curl --request DELETE \
+  --url https://api.gamehub.com/library/60f6c5b7f58a5c6d09fa1a28 \
+  --header 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript JavaScript
+const bibliotecaId = '60f6c5b7f58a5c6d09fa1a28';
+
+const response = await fetch(`https://api.gamehub.com/library/${bibliotecaId}`, {
+  method: 'DELETE',
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN'
+  }
+});
+
+// 204 response has no body
+if (response.status === 204) {
+  console.log('Game removed successfully');
+}
+```
+
+```python Python
+import requests
+
+biblioteca_id = '60f6c5b7f58a5c6d09fa1a28'
+
+response = requests.delete(
+    f'https://api.gamehub.com/library/{biblioteca_id}',
+    headers={'Authorization': 'Bearer YOUR_TOKEN'}
+)
+
+if response.status_code == 204:
+    print('Game removed successfully')
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response (204)
+// No content returned
+```
+
+```json Error - Not Found (404)
+{
+  "status": "fail",
+  "message": "Library entry not found"
+}
+```
+
+```json Error - Unauthorized (401)
+{
+  "status": "fail",
+  "message": "Authentication required"
+}
+```
+</ResponseExample>
+
+## Important Considerations
+
+<Warning>
+  **This action is permanent.** Once a game is removed from the library, the user will need to add it again to regain access. This applies to both purchased and subscription-based games.
+</Warning>
+
+### For Purchased Games
+- Removing a purchased game from the library does **not** revoke ownership
+- The user can re-add the game later without repurchasing
+- Purchase history and rights are maintained in the system
+
+### For Subscription Games
+- Removing a subscription game simply removes it from the user's active library
+- The user can re-add the game as long as they have an active subscription
+- Removal does not affect subscription status
+
+## Use Cases
+
+1. **Library Management**: Users decluttering their library by removing games they no longer play
+2. **Subscription Optimization**: Removing subscription games before cancelling subscription
+3. **Privacy**: Users removing games from their visible library
+4. **Mistakes**: Correcting accidental additions
+
+## Status Codes
+
+| Code | Description |
+|------|-------------|
+| 204 | Game successfully removed from library (no content returned) |
+| 401 | Authentication token missing or invalid |
+| 404 | Library entry not found or doesn't belong to user |
+| 500 | Internal server error |
+
+## Security
+
+- Users can only delete games from their own library
+- The biblioteca ID must be valid and belong to the authenticated user
+- Authorization is required for this endpoint
+
+## Implementation Notes
+
+- Controller: `src/controllers/biblioteca.controller.js:78` (`eliminarJuegoDeBiblioteca`)
+- Route: `DELETE /library/:bibliotecaId` (protected)
+- Returns HTTP 204 No Content on success
+- The actual controller returns a response body, but HTTP 204 convention is to return no content
+
+## Schema Reference
+
+The biblioteca schema structure:
+
+```javascript
+{
+  user: ObjectId,           // Reference to User
+  videojuego: ObjectId,     // Reference to Videojuego
+  accessType: String,       // "purchase" or "subscription"
+  addedAt: Date            // Timestamp of when added
+}
+```
+
+## Related Endpoints
+
+- [Add to Library](/api-reference/library/add-to-library) - Add a game back to library
+- [Get Library](/api-reference/library/get-library) - View all library items
+- [Get Library Item](/api-reference/library/get-library-item) - Get details before deletion

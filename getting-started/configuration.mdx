@@ -1,0 +1,206 @@
+---
+title: 'Configuration'
+description: 'Configure environment variables and application settings for GameHub API'
+icon: 'gear'
+---
+
+## Environment Variables
+
+GameHub API uses environment variables to manage configuration settings. You need to create a `.env` file in the root directory of the project.
+
+<Steps>
+  <Step title="Create .env File">
+    Create a `.env` file in the root directory of your project:
+    
+    ```bash
+    touch .env
+    ```
+    
+    <Tip>
+      You can use the `.env.example` file as a template. Copy it and rename to `.env`:
+      ```bash
+      cp .env.example .env
+      ```
+    </Tip>
+  </Step>
+
+  <Step title="Configure Required Variables">
+    Add the following environment variables to your `.env` file:
+    
+    ```bash .env
+    PORT=3000
+    MONGO_URI=mongodb://localhost:27017/gamehub
+    JWT_SECRET=your-secret-key-here
+    NODE_ENV=development
+    HOST_FRONTED=http://localhost:3001
+    ```
+  </Step>
+
+  <Step title="Customize Values">
+    Update each variable according to your environment:
+    
+    <ParamField path="PORT" type="number" default="3000">
+      The port number on which your application will run
+    </ParamField>
+    
+    <ParamField path="MONGO_URI" type="string" required>
+      MongoDB connection string for your database
+      
+      **Examples:**
+      - Local: `mongodb://localhost:27017/gamehub`
+      - MongoDB Atlas: `mongodb+srv://username:password@cluster.mongodb.net/gamehub`
+    </ParamField>
+    
+    <ParamField path="JWT_SECRET" type="string" required>
+      Secret key used to encrypt and sign JWT tokens
+      
+      <Warning>
+        Use a strong, random string for production. Never commit this to version control!
+      </Warning>
+      
+      **Generate a secure secret:**
+      ```bash
+      node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      ```
+    </ParamField>
+    
+    <ParamField path="NODE_ENV" type="string" default="development">
+      Application environment mode
+      
+      **Options:**
+      - `development` - Development mode with detailed error messages
+      - `production` - Production mode with optimized settings
+    </ParamField>
+    
+    <ParamField path="HOST_FRONTED" type="string" required>
+      URL where your frontend application is hosted (used for CORS configuration)
+      
+      **Examples:**
+      - Development: `http://localhost:3001`
+      - Production: `https://yourdomain.com`
+    </ParamField>
+  </Step>
+</Steps>
+
+## Configuration Files
+
+GameHub API uses several configuration files to manage different aspects of the application:
+
+### Database Configuration
+
+The database connection is managed in `src/config/database.config.js`:
+
+```javascript src/config/database.config.js
+const mongoose = require('mongoose');
+require('dotenv').config();
+
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URI);
+        console.log('Base de datos conectada');
+    } catch (error) {
+        console.error('Error al conectar la base de datos:', error);
+        process.exit(1);
+    }
+};
+
+module.exports = connectDB;
+```
+
+<Info>
+  The database configuration automatically uses the `MONGO_URI` from your `.env` file.
+</Info>
+
+### CORS Configuration
+
+CORS (Cross-Origin Resource Sharing) is configured in `src/app.js`:
+
+```javascript src/app.js
+const corsOptions = {
+    origin: [`${process.env.HOST_FRONTED}`],
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+```
+
+<Note>
+  Make sure the `HOST_FRONTED` environment variable matches your frontend application URL to avoid CORS errors.
+</Note>
+
+## Application Structure
+
+The main application file (`src/app.js`) configures:
+
+- **Express middleware** (JSON parsing, cookies)
+- **CORS settings** for frontend communication
+- **Database connection** via MongoDB
+- **API routes** under `/api/v1` prefix
+- **Swagger documentation** for API reference
+- **Static file serving** from `/public` directory
+- **Error handling** middleware
+
+## Server Configuration
+
+The server starts on the port specified in your `.env` file (default: 3000):
+
+```javascript server.js
+const app = require('./src/app');
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
+```
+
+## Verification
+
+After configuring your environment variables, verify that everything is set up correctly:
+
+<CodeGroup>
+```bash Check Environment Variables
+node -e "require('dotenv').config(); console.log('PORT:', process.env.PORT); console.log('MONGO_URI:', process.env.MONGO_URI ? 'Set' : 'Not Set'); console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not Set');"
+```
+
+```bash Test MongoDB Connection
+node -e "require('dotenv').config(); const mongoose = require('mongoose'); mongoose.connect(process.env.MONGO_URI).then(() => { console.log('MongoDB connected successfully!'); process.exit(0); }).catch(err => { console.error('MongoDB connection failed:', err.message); process.exit(1); });"
+```
+</CodeGroup>
+
+## Security Best Practices
+
+<Warning>
+  **Never commit your `.env` file to version control!**
+</Warning>
+
+Ensure your `.gitignore` file includes:
+
+```bash .gitignore
+.env
+.env.local
+.env.*.local
+```
+
+<CardGroup cols={2}>
+  <Card title="Use Strong Secrets" icon="key">
+    Generate cryptographically secure random strings for JWT_SECRET
+  </Card>
+  <Card title="Environment-Specific Config" icon="layer-group">
+    Use different `.env` files for development, staging, and production
+  </Card>
+  <Card title="Rotate Secrets Regularly" icon="rotate">
+    Change JWT_SECRET and other secrets periodically in production
+  </Card>
+  <Card title="Limit CORS Origins" icon="shield-check">
+    Only allow trusted domains in CORS configuration
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+With your configuration complete, you're ready to set up the database:
+
+<Card title="Database Setup" icon="database" href="/getting-started/database-setup">
+  Initialize MongoDB and seed initial data
+</Card>

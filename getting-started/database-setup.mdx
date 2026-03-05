@@ -1,0 +1,371 @@
+---
+title: 'Database Setup'
+description: 'Initialize and seed your MongoDB database for GameHub API'
+icon: 'database'
+---
+
+## Overview
+
+GameHub API uses MongoDB as its database solution. This guide will walk you through setting up and initializing your database with the required seed data.
+
+<Info>
+  Make sure MongoDB is installed and running on your system before proceeding. See the [Installation](/getting-started/installation) guide for prerequisites.
+</Info>
+
+## Database Connection
+
+<Steps>
+  <Step title="Verify MongoDB is Running">
+    Ensure MongoDB is running on your system:
+    
+    <CodeGroup>
+    ```bash macOS/Linux
+    # Check if MongoDB is running
+    pgrep mongod
+    
+    # Or check the service status
+    sudo systemctl status mongod
+    ```
+    
+    ```bash Windows
+    # Check if MongoDB service is running
+    net start | findstr MongoDB
+    ```
+    </CodeGroup>
+    
+    If MongoDB is not running, start it:
+    
+    <CodeGroup>
+    ```bash macOS/Linux
+    sudo systemctl start mongod
+    ```
+    
+    ```bash Windows
+    net start MongoDB
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Configure Database URI">
+    Ensure your `.env` file has the correct MongoDB connection string:
+    
+    ```bash .env
+    MONGO_URI=mongodb://localhost:27017/gamehub
+    ```
+    
+    <Tabs>
+      <Tab title="Local MongoDB">
+        For local MongoDB installation:
+        ```
+        MONGO_URI=mongodb://localhost:27017/gamehub
+        ```
+      </Tab>
+      
+      <Tab title="MongoDB Atlas">
+        For MongoDB Atlas (cloud):
+        ```
+        MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/gamehub?retryWrites=true&w=majority
+        ```
+      </Tab>
+      
+      <Tab title="With Authentication">
+        For MongoDB with authentication:
+        ```
+        MONGO_URI=mongodb://username:password@localhost:27017/gamehub?authSource=admin
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Test Database Connection">
+    Verify the connection works:
+    
+    ```bash
+    node -e "require('dotenv').config(); const mongoose = require('mongoose'); mongoose.connect(process.env.MONGO_URI).then(() => { console.log('✓ MongoDB connected successfully'); process.exit(0); }).catch(err => { console.error('✗ Connection failed:', err.message); process.exit(1); });"
+    ```
+  </Step>
+</Steps>
+
+## Database Seeding
+
+GameHub API includes a seeding script that populates the database with initial subscription types required for the application to function properly.
+
+### Understanding the Seed Script
+
+The seed script (`seed.js`) initializes the database with subscription plans:
+
+```javascript seed.js
+const mongoose = require('mongoose')
+require('dotenv').config()
+const seedSubscriptionTypes = require('./src/seeders/Subscription.Sedeers')
+
+mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+}).then(() => {
+    console.log('Conectado a la base de datos')
+    runSeeders()
+}).catch((error) => {
+    console.error('Error al conectar a la base de datos:', error)
+})
+
+const runSeeders = async () => {
+    try {
+        await seedSubscriptionTypes()
+        console.log('Seeders ejecutados correctamente')
+        process.exit()
+    } catch (error) {
+        console.error('Error al ejecutar los seeders:', error)
+        process.exit(1)
+    }
+}
+```
+
+### Subscription Types Seeder
+
+The subscription seeder creates three default subscription plans:
+
+```javascript src/seeders/Subscription.Sedeers.js
+const SubscriptionType = require('../models/subscription.types.model')
+
+const subscriptionTypes = [
+  {
+    name: 'trial',
+    price: 0,
+    duration: 7, 
+  },
+  {
+    name: 'monthly',
+    price: 9.99,
+    duration: 30,  
+  },
+  {
+    name: 'annual',
+    price: 99.99,
+    duration: 365,  
+  },
+]
+
+const seedSubscriptionTypes = async () => {
+  try {
+    await SubscriptionType.deleteMany()  
+    const createdTypes = await SubscriptionType.insertMany(subscriptionTypes) 
+    console.log('Planes de suscripción insertados:', createdTypes)
+  } catch (error) {
+    console.error('Error al insertar los planes:', error)
+  }
+}
+
+module.exports = seedSubscriptionTypes
+```
+
+### Subscription Plans Created
+
+<CardGroup cols={3}>
+  <Card title="Trial" icon="gift">
+    **Price:** $0.00  
+    **Duration:** 7 days  
+    Perfect for testing the platform
+  </Card>
+  
+  <Card title="Monthly" icon="calendar">
+    **Price:** $9.99  
+    **Duration:** 30 days  
+    Month-to-month subscription
+  </Card>
+  
+  <Card title="Annual" icon="calendar-days">
+    **Price:** $99.99  
+    **Duration:** 365 days  
+    Save with yearly billing
+  </Card>
+</CardGroup>
+
+## Running the Seed Script
+
+<Steps>
+  <Step title="Execute Seed Command">
+    Run the database seeding script:
+    
+    ```bash
+    npm run seed
+    ```
+    
+    You should see output similar to:
+    
+    ```bash
+    Conectado a la base de datos
+    Planes de suscripción insertados: [
+      { name: 'trial', price: 0, duration: 7, _id: ... },
+      { name: 'monthly', price: 9.99, duration: 30, _id: ... },
+      { name: 'annual', price: 99.99, duration: 365, _id: ... }
+    ]
+    Seeders ejecutados correctamente
+    ```
+  </Step>
+
+  <Step title="Verify Seed Data">
+    Verify the subscription types were created successfully:
+    
+    <CodeGroup>
+    ```bash MongoDB Shell
+    mongosh
+    use gamehub
+    db.subscriptiontypes.find().pretty()
+    ```
+    
+    ```bash Node.js Script
+    node -e "require('dotenv').config(); const mongoose = require('mongoose'); const SubscriptionType = require('./src/models/subscription.types.model'); mongoose.connect(process.env.MONGO_URI).then(async () => { const types = await SubscriptionType.find(); console.log('Subscription Types:', types); process.exit(0); });"
+    ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+<Warning>
+  **Important:** The seed script uses `deleteMany()` which will **remove all existing subscription types** before inserting new ones. Run this only during initial setup or when you need to reset subscription data.
+</Warning>
+
+## Database Models
+
+GameHub API uses the following main database models:
+
+<AccordionGroup>
+  <Accordion title="Users" icon="user">
+    Stores user account information including:
+    - Username and email
+    - Hashed passwords (bcrypt)
+    - User roles (admin/user)
+    - Account creation date
+  </Accordion>
+  
+  <Accordion title="Subscription Types" icon="tags">
+    Defines available subscription plans:
+    - Plan name (trial, monthly, annual)
+    - Price in USD
+    - Duration in days
+  </Accordion>
+  
+  <Accordion title="Active Subscriptions" icon="calendar-check">
+    Tracks user subscriptions:
+    - User reference
+    - Subscription type reference
+    - Start and end dates
+    - Active status
+  </Accordion>
+  
+  <Accordion title="Video Games" icon="gamepad">
+    Game catalog information:
+    - Title, genre, description
+    - Image URLs
+    - Price and availability
+    - Access method (purchase/subscription)
+  </Accordion>
+  
+  <Accordion title="User Library" icon="book">
+    User's game collection:
+    - User reference
+    - Game reference
+    - Acquisition method
+    - Purchase date
+  </Accordion>
+</AccordionGroup>
+
+## Database Connection in Application
+
+The application connects to MongoDB when it starts:
+
+```javascript src/app.js
+const connectDB = require('./config/database.config.js');
+
+// Connect to database
+connectDB();
+```
+
+The connection is established automatically when you run:
+
+```bash
+npm start
+```
+
+or
+
+```bash
+npm run dev
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Connection Refused Error">
+    **Error:** `MongooseServerSelectionError: connect ECONNREFUSED`
+    
+    **Solutions:**
+    - Verify MongoDB is running: `sudo systemctl status mongod`
+    - Check if MongoDB is listening on the correct port (default: 27017)
+    - Ensure your `MONGO_URI` in `.env` is correct
+  </Accordion>
+  
+  <Accordion title="Authentication Failed">
+    **Error:** `MongoServerError: Authentication failed`
+    
+    **Solutions:**
+    - Verify username and password in `MONGO_URI`
+    - Check that the user has proper permissions on the database
+    - Ensure `authSource` parameter is correct if using authentication
+  </Accordion>
+  
+  <Accordion title="Seed Script Fails">
+    **Error:** Seeder execution fails
+    
+    **Solutions:**
+    - Ensure database connection is working
+    - Check that the `SubscriptionType` model exists
+    - Verify MongoDB has write permissions
+    - Review error logs for specific model validation errors
+  </Accordion>
+  
+  <Accordion title="Network Timeout">
+    **Error:** `MongooseServerSelectionError: connection timed out`
+    
+    **Solutions:**
+    - Check network connectivity
+    - Verify firewall settings aren't blocking MongoDB
+    - For MongoDB Atlas, ensure your IP is whitelisted
+    - Increase connection timeout in connection options
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+With your database set up and seeded, you're ready to start using GameHub API:
+
+<CardGroup cols={2}>
+  <Card title="Start the Server" icon="server" href="/getting-started/configuration">
+    Launch the API server and verify everything works
+  </Card>
+  <Card title="API Reference" icon="book" href="/api-reference/auth/signup">
+    Explore available endpoints and start building
+  </Card>
+  <Card title="Authentication" icon="lock" href="/authentication/overview">
+    Learn how to authenticate users with JWT
+  </Card>
+  <Card title="Subscriptions" icon="credit-card" href="/api-reference/subscriptions/list-plans">
+    Manage user subscriptions and access control
+  </Card>
+</CardGroup>
+
+## Database Management Tips
+
+<Tip>
+  **Backup your database regularly** in production:
+  ```bash
+  mongodump --uri="mongodb://localhost:27017/gamehub" --out=/backup/gamehub-$(date +%Y%m%d)
+  ```
+</Tip>
+
+<Tip>
+  **Monitor database performance** using MongoDB tools:
+  - MongoDB Compass for visual database management
+  - `mongostat` for real-time performance statistics
+  - `mongotop` for collection-level activity tracking
+</Tip>

@@ -1,0 +1,70 @@
+---
+title: "Introduction"
+description: "RESTful API for managing video games and user access through subscriptions and purchases"
+---
+
+## Welcome to GameHub API
+
+GameHub API is a comprehensive RESTful platform designed for managing video games and user access through flexible subscription plans and purchase options. Built with Node.js and Express, it provides secure authentication, role-based access control, and a rich feature set for game library management.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/getting-started/installation">
+    Get up and running with GameHub API in minutes
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/auth/signup">
+    Explore the complete API documentation
+  </Card>
+  <Card title="Authentication" icon="shield-halved" href="/authentication/overview">
+    Learn about JWT-based authentication and roles
+  </Card>
+  <Card title="Subscriptions" icon="credit-card" href="/concepts/subscription-system">
+    Understand the subscription and access model
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Role-Based Access Control" icon="user-shield">
+    Separate admin and user roles with granular permissions for secure resource management
+  </Card>
+  <Card title="Flexible Subscriptions" icon="calendar-days">
+    Trial, monthly, and annual subscription plans with automatic access management
+  </Card>
+  <Card title="Game Library Management" icon="gamepad">
+    Personal libraries with both subscription-based and purchase-based game access
+  </Card>
+  <Card title="Secure Authentication" icon="lock">
+    JWT tokens with HTTP-only cookies for enhanced security
+  </Card>
+  <Card title="File Upload Support" icon="cloud-arrow-up">
+    Integrated Multer middleware for game image uploads
+  </Card>
+  <Card title="OpenAPI Documentation" icon="book">
+    Auto-generated Swagger docs for easy API exploration
+  </Card>
+</CardGroup>
+
+## Architecture Overview
+
+GameHub API follows a modern MVC architecture pattern:
+
+- **Controllers** handle HTTP request/response logic
+- **Models** define MongoDB schemas with Mongoose
+- **Routes** organize endpoints by resource type
+- **Middlewares** provide authentication, error handling, and validation
+- **Helpers** contain reusable utility functions
+
+## What's Next?
+
+<CardGroup cols={3}>
+  <Card title="Installation" icon="download" href="/getting-started/installation">
+    Install dependencies and set up your environment
+  </Card>
+  <Card title="Configuration" icon="gear" href="/getting-started/configuration">
+    Configure environment variables and settings
+  </Card>
+  <Card title="Database Setup" icon="database" href="/getting-started/database-setup">
+    Initialize MongoDB and seed initial data
+  </Card>
+</CardGroup>

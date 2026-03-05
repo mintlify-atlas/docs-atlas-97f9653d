@@ -1,0 +1,269 @@
+---
+title: 'Rate Limiting'
+description: 'Rate limiting policies and best practices for the GameHub API'
+---
+
+## Current Implementation Status
+
+<Warning>
+  Rate limiting is **not currently implemented** in the GameHub API. All endpoints are available without request rate restrictions.
+</Warning>
+
+While the API currently does not enforce rate limits, clients should implement responsible usage patterns to ensure optimal performance for all users.
+
+## Recommended Client-Side Practices
+
+Even without server-side rate limiting, follow these best practices:
+
+### Implement Request Throttling
+
+Limit the frequency of requests from your application:
+
+```javascript
+// Example: Throttle requests to max 100 per minute
+const throttle = {
+  requests: [],
+  maxRequests: 100,
+  timeWindow: 60000, // 1 minute
+  
+  async makeRequest(url, options) {
+    const now = Date.now();
+    this.requests = this.requests.filter(time => now - time < this.timeWindow);
+    
+    if (this.requests.length >= this.maxRequests) {
+      throw new Error('Rate limit exceeded');
+    }
+    
+    this.requests.push(now);
+    return fetch(url, options);
+  }
+};
+```
+
+### Use Batch Operations
+
+Where possible, batch multiple operations into single requests to reduce API calls.
+
+### Implement Caching
+
+Cache responses that don't change frequently:
+
+```javascript
+const cache = new Map();
+
+async function getCachedGame(gameId) {
+  const cacheKey = `game-${gameId}`;
+  const cached = cache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.timestamp < 300000) { // 5 minutes
+    return cached.data;
+  }
+  
+  const response = await fetch(`/api/v1/games/${gameId}`);
+  const data = await response.json();
+  
+  cache.set(cacheKey, {
+    data,
+    timestamp: Date.now()
+  });
+  
+  return data;
+}
+```
+
+### Implement Exponential Backoff
+
+Retry failed requests with increasing delays:
+
+```javascript
+async function fetchWithRetry(url, options, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok) return response;
+      
+      if (response.status >= 500) {
+        // Server error, retry with exponential backoff
+        await new Promise(resolve => 
+          setTimeout(resolve, Math.pow(2, i) * 1000)
+        );
+        continue;
+      }
+      
+      return response; // Client error, don't retry
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(resolve => 
+        setTimeout(resolve, Math.pow(2, i) * 1000)
+      );
+    }
+  }
+}
+```
+
+## Future Rate Limiting Implementation
+
+### Recommended Approach
+
+When rate limiting is implemented, we recommend the following configuration:
+
+#### Global Rate Limits
+
+| Limit Type | Recommended Value | Time Window |
+|------------|-------------------|-------------|
+| Requests per IP | 100 requests | 15 minutes |
+| Requests per user | 1000 requests | 1 hour |
+
+#### Endpoint-Specific Limits
+
+| Endpoint Category | Recommended Limit | Time Window |
+|-------------------|-------------------|-------------|
+| Authentication | 5 requests | 15 minutes |
+| Game queries | 60 requests | 1 minute |
+| Library operations | 30 requests | 1 minute |
+| User management | 20 requests | 1 minute |
+| File uploads | 10 requests | 1 minute |
+
+### Suggested Implementation
+
+For future implementation, we recommend using `express-rate-limit` middleware:
+
+```javascript
+const rateLimit = require('express-rate-limit');
+
+// Global rate limiter
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: {
+    status: 'fail',
+    message: 'Too many requests, please try again later',
+    isOperational: true,
+    data: null
+  },
+  standardHeaders: true, // Return rate limit info in headers
+  legacyHeaders: false,
+});
+
+// Auth-specific limiter
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: {
+    status: 'fail',
+    message: 'Too many authentication attempts, please try again later',
+    isOperational: true,
+    data: null
+  }
+});
+
+// Apply to app
+app.use('/api/v1', globalLimiter);
+app.use('/api/v1/auth', authLimiter);
+```
+
+### Rate Limit Response Headers
+
+When implemented, rate limit information will be included in response headers:
+
+| Header | Description |
+|--------|-------------|
+| `RateLimit-Limit` | Maximum number of requests allowed in the time window |
+| `RateLimit-Remaining` | Number of requests remaining in the current window |
+| `RateLimit-Reset` | Timestamp when the rate limit window resets |
+
+**Example Response Headers:**
+```
+RateLimit-Limit: 100
+RateLimit-Remaining: 95
+RateLimit-Reset: 1678901234
+```
+
+### Rate Limit Error Response
+
+When a rate limit is exceeded, the API will return:
+
+**Status Code:** `429 Too Many Requests`
+
+```json
+{
+  "status": "fail",
+  "message": "Too many requests, please try again later",
+  "isOperational": true,
+  "data": null
+}
+```
+
+### Handling Rate Limit Errors
+
+When rate limiting is implemented, handle 429 responses appropriately:
+
+```javascript
+async function makeApiRequest(url, options) {
+  const response = await fetch(url, options);
+  
+  if (response.status === 429) {
+    const resetTime = response.headers.get('RateLimit-Reset');
+    const waitTime = (resetTime * 1000) - Date.now();
+    
+    console.log(`Rate limited. Retry after ${waitTime}ms`);
+    
+    // Wait and retry
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+    return makeApiRequest(url, options);
+  }
+  
+  return response;
+}
+```
+
+### Monitor Rate Limit Headers
+
+Proactively monitor rate limit headers to avoid hitting limits:
+
+```javascript
+function checkRateLimit(response) {
+  const remaining = response.headers.get('RateLimit-Remaining');
+  const limit = response.headers.get('RateLimit-Limit');
+  
+  if (remaining && limit) {
+    const usage = ((limit - remaining) / limit) * 100;
+    
+    if (usage > 80) {
+      console.warn(`Warning: ${usage.toFixed(0)}% of rate limit used`);
+    }
+  }
+}
+```
+
+## Additional Considerations
+
+### Distributed Systems
+
+For applications with multiple servers or instances, consider:
+
+- Using Redis-based rate limiting for shared state across instances
+- Implementing user-based limits in addition to IP-based limits
+- Setting up monitoring and alerting for rate limit violations
+
+### WebSocket Connections
+
+If WebSocket support is added in the future, separate rate limits should apply:
+
+- Connection rate limits (e.g., 10 connections per minute)
+- Message rate limits (e.g., 100 messages per minute per connection)
+
+### API Keys
+
+For future API key implementation, different tiers could have different limits:
+
+| Tier | Requests per Hour | Burst Limit |
+|------|-------------------|-------------|
+| Free | 1,000 | 20/min |
+| Basic | 10,000 | 100/min |
+| Premium | 100,000 | 500/min |
+| Enterprise | Unlimited | Custom |
+
+## Contact & Support
+
+If you need higher rate limits or have specific requirements, please contact the API team to discuss custom arrangements.

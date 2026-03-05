@@ -1,0 +1,149 @@
+---
+title: "Subscribe User"
+api: "POST /sub/subscribe"
+description: "Allow an authenticated user to subscribe to a plan"
+---
+
+Allows the authenticated user to subscribe themselves to a subscription plan. The user can choose from available subscription types (trial, monthly, or annual). This endpoint creates a new subscription or updates an existing inactive subscription.
+
+## Authentication
+
+Requires a valid JWT token in the Authorization header.
+
+```bash
+Authorization: Bearer <token>
+```
+
+## Request Body
+
+<ParamField body="subscriptionName" type="string" required>
+  The name of the subscription plan to subscribe to. Must be one of: `trial`, `monthly`, or `annual`
+</ParamField>
+
+## Subscription Duration
+
+When a user subscribes, the system automatically calculates the end date based on the subscription type's duration:
+
+- **trial**: 7 days from activation
+- **monthly**: 30 days from activation
+- **annual**: 365 days from activation
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status indicator
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="data properties">
+    <ResponseField name="subscription" type="object">
+      The created or updated subscription
+      
+      <Expandable title="subscription properties">
+        <ResponseField name="_id" type="string">
+          Unique identifier for the subscription
+        </ResponseField>
+        
+        <ResponseField name="user" type="string">
+          User ID of the subscriber
+        </ResponseField>
+        
+        <ResponseField name="subscriptionType" type="string">
+          ID of the subscription type
+        </ResponseField>
+        
+        <ResponseField name="isActive" type="boolean">
+          Whether the subscription is currently active
+        </ResponseField>
+        
+        <ResponseField name="startDate" type="string">
+          ISO 8601 timestamp of when the subscription started
+        </ResponseField>
+        
+        <ResponseField name="endDate" type="string">
+          ISO 8601 timestamp of when the subscription expires
+        </ResponseField>
+        
+        <ResponseField name="activatedBy" type="string">
+          User ID of who activated the subscription (same as user for self-subscription)
+        </ResponseField>
+        
+        <ResponseField name="createdAt" type="string">
+          ISO 8601 timestamp of when the subscription record was created
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.gamehub.com/sub/subscribe \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subscriptionName": "monthly"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.gamehub.com/sub/subscribe', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    subscriptionName: 'monthly'
+  })
+});
+
+const data = await response.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "status": "success",
+  "message": "Suscripción actualizada o creada exitosamente",
+  "data": {
+    "subscription": {
+      "_id": "60f6c5b7f58a5c6d09fa1a31",
+      "user": "60f6c5b7f58a5c6d09fa1a27",
+      "subscriptionType": "60f6c5b7f58a5c6d09fa1a30",
+      "isActive": true,
+      "startDate": "2026-03-05T10:00:00.000Z",
+      "endDate": "2026-04-04T10:00:00.000Z",
+      "activatedBy": "60f6c5b7f58a5c6d09fa1a27",
+      "createdAt": "2026-03-05T10:00:00.000Z"
+    }
+  }
+}
+```
+
+```json 400 - Active Subscription Exists
+{
+  "status": "error",
+  "message": "Ya tienes una suscripción activa"
+}
+```
+
+```json 404 - Subscription Type Not Found
+{
+  "status": "error",
+  "message": "Tipo de suscripción no encontrado"
+}
+```
+</ResponseExample>
+
+## Important Notes
+
+- Users can only have one active subscription at a time
+- To change subscription plans, users must first cancel their current subscription
+- The subscription automatically grants access to all subscription-based games in the library
+- This endpoint does NOT require admin privileges - any authenticated user can subscribe

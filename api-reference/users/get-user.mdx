@@ -1,0 +1,110 @@
+---
+title: "Get User"
+api: "GET /user/{id}"
+description: "Retrieve details of a specific user by their ID"
+---
+
+## Authentication
+
+This endpoint requires authentication via Bearer token. All authenticated users can access this endpoint.
+
+## Request
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the user to retrieve
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X GET https://api.gamehub.com/user/60f6c5b7f58a5c6d09fa1a27 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## Response
+
+<ResponseField name="status" type="string">
+  Status of the request ("success")
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Container object for the response data
+  
+  <ResponseField name="user" type="object">
+    The requested user object
+    
+    <ResponseField name="_id" type="string">
+      Unique identifier for the user
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Full name of the user
+    </ResponseField>
+    
+    <ResponseField name="email" type="string">
+      Email address of the user
+    </ResponseField>
+    
+    <ResponseField name="rol" type="string">
+      User role - either "user" or "admin"
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp when the user was created
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+### Success Response (200)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "user": {
+      "_id": "60f6c5b7f58a5c6d09fa1a27",
+      "name": "pedro luis",
+      "email": "pedrorc2018@gmail.com",
+      "rol": "user",
+      "createdAt": "2024-10-25T00:03:01.415Z"
+    }
+  }
+}
+```
+
+## Error Responses
+
+### 404 Not Found
+
+Returned when the user with the specified ID does not exist.
+
+```json
+{
+  "status": "error",
+  "message": "Usuario no encontrado"
+}
+```
+
+### 401 Unauthorized
+
+Returned when the authentication token is missing or invalid.
+
+```json
+{
+  "status": "error",
+  "message": "No autorizado, token inválido o faltante"
+}
+```
+
+### 400 Bad Request
+
+Returned when the provided user ID is not a valid format.
+
+```json
+{
+  "status": "error",
+  "message": "ID de usuario inválido"
+}
+```

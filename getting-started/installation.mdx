@@ -1,0 +1,115 @@
+---
+title: 'Installation'
+description: 'Get GameHub API up and running on your local machine'
+icon: 'download'
+---
+
+## Prerequisites
+
+Before installing GameHub API, ensure you have the following installed on your system:
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node-js" iconType="duotone">
+    Version 16 or higher required
+  </Card>
+  <Card title="MongoDB" icon="database" iconType="duotone">
+    NoSQL database for storing application data
+  </Card>
+</CardGroup>
+
+<Note>
+  Make sure Node.js and MongoDB are properly configured and running before proceeding with the installation.
+</Note>
+
+## Installation Steps
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the GameHub API repository from GitHub to your local machine:
+    
+    ```bash
+    git clone https://github.com/peLuis123/albun-backend
+    cd albun-backend
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all required npm packages defined in `package.json`:
+    
+    ```bash
+    npm install
+    ```
+    
+    This will install the following key dependencies:
+    
+    <AccordionGroup>
+      <Accordion title="Core Dependencies">
+        - **express** (^4.21.1) - Web framework for Node.js
+        - **mongoose** (^8.7.2) - MongoDB object modeling
+        - **dotenv** (^16.4.5) - Environment variable management
+        - **cors** (^2.8.5) - Cross-Origin Resource Sharing
+        - **cookie-parser** (^1.4.6) - Cookie parsing middleware
+      </Accordion>
+      
+      <Accordion title="Authentication & Security">
+        - **jsonwebtoken** (^9.0.2) - JWT token generation and validation
+        - **bcryptjs** (^2.4.3) - Password hashing
+      </Accordion>
+      
+      <Accordion title="File Upload & Documentation">
+        - **multer** (^1.4.5-lts.1) - File upload handling
+        - **swagger-ui-express** (^5.0.1) - API documentation
+        - **yamljs** (^0.3.0) - YAML parsing for Swagger
+      </Accordion>
+      
+      <Accordion title="Development Dependencies">
+        - **nodemon** (^3.1.4) - Auto-restart during development
+      </Accordion>
+    </AccordionGroup>
+  </Step>
+
+  <Step title="Verify Installation">
+    Verify that all dependencies were installed successfully:
+    
+    ```bash
+    npm list --depth=0
+    ```
+    
+    You should see all the dependencies listed without any errors.
+  </Step>
+</Steps>
+
+## Available NPM Scripts
+
+After installation, you can use the following npm scripts:
+
+<CodeGroup>
+```bash Start Production Server
+npm start
+```
+
+```bash Start Development Server
+npm run dev
+```
+
+```bash Seed Database
+npm run seed
+```
+</CodeGroup>
+
+<Info>
+  The development server uses **nodemon** for auto-reloading when you make changes to your code.
+</Info>
+
+## Next Steps
+
+Now that you've installed GameHub API, proceed to:
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/getting-started/configuration">
+    Set up your environment variables and configuration
+  </Card>
+  <Card title="Database Setup" icon="database" href="/getting-started/database-setup">
+    Initialize and seed your MongoDB database
+  </Card>
+</CardGroup>

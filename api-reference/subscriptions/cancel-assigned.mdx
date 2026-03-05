@@ -1,0 +1,210 @@
+---
+title: "Cancel Assigned Subscription"
+api: "POST /sub/cancelAssign"
+description: "Cancel another user's subscription (Admin or authorized user)"
+---
+
+Allows authorized users to cancel a subscription for a specified user. While the route doesn't explicitly require admin privileges in the middleware, it's designed for administrative use and customer support scenarios.
+
+## Authentication
+
+Requires a valid JWT token in the Authorization header.
+
+```bash
+Authorization: Bearer <token>
+```
+
+## Request Body
+
+<ParamField body="userId" type="string" required>
+  The ID of the user whose subscription should be cancelled
+</ParamField>
+
+## Behavior
+
+- Finds the active subscription for the specified user
+- Sets the subscription's `isActive` field to `false`
+- Updates the `endDate` to the current timestamp
+- User immediately loses access to subscription-based games
+- Does not affect purchased games
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status indicator
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="data properties">
+    <ResponseField name="subscription" type="object">
+      The cancelled subscription object
+      
+      <Expandable title="subscription properties">
+        <ResponseField name="_id" type="string">
+          Unique identifier for the subscription
+        </ResponseField>
+        
+        <ResponseField name="user" type="string">
+          User ID of the subscriber whose subscription was cancelled
+        </ResponseField>
+        
+        <ResponseField name="subscriptionType" type="string">
+          ID of the subscription type
+        </ResponseField>
+        
+        <ResponseField name="isActive" type="boolean">
+          Whether the subscription is currently active (false after cancellation)
+        </ResponseField>
+        
+        <ResponseField name="startDate" type="string">
+          ISO 8601 timestamp of when the subscription originally started
+        </ResponseField>
+        
+        <ResponseField name="endDate" type="string">
+          ISO 8601 timestamp set to the current time (cancellation time)
+        </ResponseField>
+        
+        <ResponseField name="activatedBy" type="string">
+          User ID of who originally activated the subscription
+        </ResponseField>
+        
+        <ResponseField name="createdAt" type="string">
+          ISO 8601 timestamp of when the subscription record was created
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.gamehub.com/sub/cancelAssign \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "60f6c5b7f58a5c6d09fa1a28"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.gamehub.com/sub/cancelAssign', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    userId: '60f6c5b7f58a5c6d09fa1a28'
+  })
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.gamehub.com/sub/cancelAssign',
+    headers={
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json'
+    },
+    json={'userId': '60f6c5b7f58a5c6d09fa1a28'}
+)
+
+data = response.json()
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "status": "success",
+  "message": "Suscripción cancelada correctamente",
+  "data": {
+    "subscription": {
+      "_id": "60f6c5b7f58a5c6d09fa1a31",
+      "user": "60f6c5b7f58a5c6d09fa1a28",
+      "subscriptionType": "60f6c5b7f58a5c6d09fa1a30",
+      "isActive": false,
+      "startDate": "2026-02-15T08:00:00.000Z",
+      "endDate": "2026-03-05T15:45:00.000Z",
+      "activatedBy": "60f6c5b7f58a5c6d09fa1a27",
+      "createdAt": "2026-02-15T08:00:00.000Z"
+    }
+  }
+}
+```
+
+```json 404 - No Active Subscription
+{
+  "status": "error",
+  "message": "No tienes una suscripción activa"
+}
+```
+</ResponseExample>
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Customer Support" icon="headset">
+    Handle subscription cancellation requests from users who contact support
+  </Card>
+  
+  <Card title="Policy Violations" icon="shield">
+    Revoke subscriptions for users who violate terms of service
+  </Card>
+  
+  <Card title="Billing Issues" icon="credit-card">
+    Cancel subscriptions when payment processing fails
+  </Card>
+  
+  <Card title="Account Management" icon="user-gear">
+    Administrative control over user subscription status
+  </Card>
+</CardGroup>
+
+## Comparison with Cancel Own Subscription
+
+| Feature | `/sub/cancel` | `/sub/cancelAssign` |
+|---------|---------------|---------------------|
+| Target User | Authenticated user (self) | Any user specified by ID |
+| Request Body | None required | Requires `userId` |
+| Use Case | User self-service | Admin/support operations |
+| Authorization | Any authenticated user | Typically admin access |
+
+## Example Scenario
+
+An admin needs to cancel a user's subscription due to a billing dispute:
+
+1. User with ID `60f6c5b7f58a5c6d09fa1a28` has an annual subscription
+2. Subscription started on February 15, 2026
+3. Original end date was February 15, 2027
+4. Admin cancels on March 5, 2026 at 3:45 PM
+5. New end date becomes March 5, 2026 at 3:45 PM
+6. User loses access immediately
+
+## Impact on Game Access
+
+When a subscription is cancelled via this endpoint:
+
+- **Immediate Effect**: User loses access to all subscription-based games
+- **Library Impact**: Subscription games remain in library but are unplayable
+- **Purchase Protection**: Individually purchased games remain fully accessible
+- **Progress Retention**: All game saves and progress data is preserved
+
+## Important Notes
+
+<Warning>
+  This endpoint allows cancellation of any user's subscription. Implement proper authorization checks in your application logic to ensure only authorized personnel can use this endpoint.
+</Warning>
+
+- The error message "No tienes una suscripción activa" technically refers to the target user, not the requester
+- This endpoint only affects active subscriptions - inactive subscriptions cannot be cancelled
+- Consider implementing audit logging to track who cancelled which subscriptions
+- Unlike the assignment endpoint, this does NOT require explicit admin middleware (though it should in production)

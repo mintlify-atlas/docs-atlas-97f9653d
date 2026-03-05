@@ -1,0 +1,330 @@
+---
+title: 'Game Library'
+description: 'Learn how GameHub manages user game libraries and tracks ownership through purchases and subscriptions'
+---
+
+## Overview
+
+The Game Library (Biblioteca) system is GameHub's core mechanism for tracking which games users have access to. It maintains a record of each game in a user's collection, including how they acquired access (purchase or subscription).
+
+## Schema Definition
+
+### Biblioteca Model
+
+The library entry model connects users to their games:
+
+```javascript
+const bibliotecaSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+    },
+    videojuego: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Videojuego',
+        required: true,
+    },
+    accessType: {
+        type: String,
+        enum: ['purchase', 'subscription'],
+        required: true,
+    },
+    addedAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+```
+
+### Key Fields
+
+- **user**: Reference to the user who owns this library entry
+- **videojuego**: Reference to the game in the library
+- **accessType**: How the user acquired access - either `purchase` or `subscription`
+- **addedAt**: Timestamp when the game was added to the library
+
+## Access Types
+
+<CardGroup cols={2}>
+  <Card title="Purchase" icon="credit-card">
+    Permanent ownership acquired through one-time payment
+  </Card>
+  <Card title="Subscription" icon="repeat">
+    Temporary access granted while subscription is active
+  </Card>
+</CardGroup>
+
+### Purchase Access
+
+Games acquired through purchase:
+- Permanent ownership
+- Remains in library regardless of subscription status
+- One-time payment required
+- Cannot be removed unless user explicitly deletes
+
+### Subscription Access
+
+Games acquired through subscription:
+- Access tied to active subscription
+- Available while subscription is valid
+- No additional payment beyond subscription fee
+- Access may be restricted for trial users
+
+## Game Model
+
+### Videojuego Schema
+
+Games in GameHub are defined with flexible access options:
+
+```javascript
+const videojuegoSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        required: [true, 'El título del videojuego es obligatorio'],
+    },
+    genre: {
+        type: String,
+        required: [true, 'El género del videojuego es obligatorio'],
+    },
+    description: {
+        type: String,
+        required: [true, 'La descripción es obligatoria'],
+    },
+    releaseDate: {
+        type: Date,
+        required: [true, 'La fecha de lanzamiento es obligatoria'],
+    },
+    imagePath: {
+        type: String,
+        required: [true, 'La imagen del videojuego es obligatoria'],
+    },
+    accessType: {
+        subscription: {
+            type: Boolean,
+            default: false,
+        },
+        purchase: {
+            type: Boolean,
+            default: false,
+        },
+    },
+    price: {
+        type: Number,
+        default: 0, 
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+```
+
+### Access Type Configuration
+
+Games can be configured with multiple access methods:
+
+- **subscription: true, purchase: false** - Subscription-only game
+- **subscription: false, purchase: true** - Purchase-only game  
+- **subscription: true, purchase: true** - Available through both methods
+- **subscription: false, purchase: false** - Invalid configuration
+
+## Library Operations
+
+### Adding Games to Library
+
+Add a game to the user's library:
+
+```javascript
+POST /api/biblioteca
+{
+  "videojuegoId": "507f1f77bcf86cd799439011",
+  "accessType": "subscription"
+}
+```
+
+**Validation Logic:**
+
+1. **Subscription Status Check** - Verifies user has valid subscription for subscription-based access
+2. **Duplicate Prevention** - Checks if game already exists in library
+3. **Access Type Matching** - Ensures the requested access type matches game availability
+
+<Warning>
+Trial users with inactive subscriptions cannot add subscription-based games to their library.
+</Warning>
+
+```javascript
+// Access validation from biblioteca.controller.js
+if (!user.isActive && accessType === "subscription" && subscriptionType.name ==="trial") {
+    return res.status(403).json({
+        status: 'fail',
+        message: 'no tienes acceso a estos videojuegos, adquiere una subscripcion'
+    });
+}
+```
+
+### Duplicate Detection
+
+The system prevents duplicate entries:
+
+```javascript
+if (existingEntry) {
+    if (existingEntry.accessType === accessType) {
+        return res.status(400).json({
+            status: 'fail',
+            message: 'Ya posees este juego con el método de acceso "${accessType}".'
+        });
+    } else {
+        return res.status(400).json({
+            status: 'fail',
+            message: 'Ya has adquirido este juego con el método de acceso "${existingEntry.accessType}".'
+        });
+    }
+}
+```
+
+### Retrieving User Library
+
+Get all games in the authenticated user's library:
+
+```javascript
+GET /api/biblioteca
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "_id": "507f1f77bcf86cd799439011",
+      "user": "507f191e810c19729de860ea",
+      "videojuego": {
+        "_id": "507f1f77bcf86cd799439012",
+        "title": "Cyberpunk Adventure",
+        "genre": "RPG",
+        "imagePath": "/public/images/game1.jpg"
+      },
+      "accessType": "subscription",
+      "addedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+### Updating Library Entries
+
+Update a specific library entry:
+
+```javascript
+PATCH /api/biblioteca/:bibliotecaId
+{
+  "accessType": "purchase"
+}
+```
+
+### Removing Games from Library
+
+Delete a game from the library:
+
+```javascript
+DELETE /api/biblioteca/:bibliotecaId
+```
+
+## Game Catalog Filtering
+
+The system filters available games based on subscription status:
+
+```javascript
+GET /api/videojuegos
+```
+
+**Filtering Logic:**
+
+```javascript
+// From videojuego.controller.js:122-129
+if (user.rol !== "admin") {
+    if (!userSubscription || !userSubscription.isActive) {
+        // Non-subscribed users only see purchasable games
+        videojuegos = videojuegos.filter(
+            (game) => game.accessType.purchase === true
+        );
+    }
+}
+```
+
+<Info>
+Admin users bypass filtering and can see all games regardless of subscription status.
+</Info>
+
+## Access Scenarios
+
+### Scenario 1: Subscription-Only Game
+
+A game with `subscription: true, purchase: false`:
+- Requires active monthly or annual subscription
+- Not available to trial users
+- Cannot be purchased individually
+
+### Scenario 2: Purchase-Only Game
+
+A game with `subscription: false, purchase: true`:
+- Available for one-time purchase
+- Accessible to all users (including non-subscribers)
+- Permanent ownership after purchase
+
+### Scenario 3: Dual Access Game
+
+A game with `subscription: true, purchase: true`:
+- Can be accessed via active subscription
+- Can be purchased for permanent ownership
+- Subscription users get access without purchasing
+- Non-subscribers can purchase
+
+## Response Examples
+
+### Successful Addition
+
+```json
+{
+  "status": "success",
+  "data": {
+    "biblioteca": {
+      "_id": "507f1f77bcf86cd799439011",
+      "user": "507f191e810c19729de860ea",
+      "videojuego": "507f1f77bcf86cd799439012",
+      "accessType": "subscription",
+      "addedAt": "2024-01-15T10:30:00.000Z"
+    }
+  }
+}
+```
+
+### Access Denied
+
+```json
+{
+  "status": "fail",
+  "message": "no tienes acceso a estos videojuegos, adquiere una subscripcion"
+}
+```
+
+### Duplicate Entry
+
+```json
+{
+  "status": "fail",
+  "message": "Ya posees este juego con el método de acceso 'subscription'."
+}
+```
+
+## Related Concepts
+
+<CardGroup cols={2}>
+  <Card title="Subscription System" icon="credit-card" href="/concepts/subscription-system">
+    Learn how subscriptions enable library access
+  </Card>
+  <Card title="Access Control" icon="shield" href="/concepts/access-control">
+    Understand the permission system
+  </Card>
+</CardGroup>

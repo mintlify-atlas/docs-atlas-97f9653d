@@ -1,0 +1,191 @@
+---
+title: "Update Library Item"
+api: "PATCH /library/{bibliotecaId}"
+description: "Update the access type of a game in the user's library"
+---
+
+Allows users to update how they access a specific game in their library, such as upgrading from subscription access to purchased access.
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+  
+  Example: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="bibliotecaId" type="string" required>
+  The unique identifier of the library entry to update
+  
+  Example: `"60f6c5b7f58a5c6d09fa1a28"`
+</ParamField>
+
+## Request Body
+
+<ParamField body="accessType" type="string" required>
+  The new access type for this game
+  
+  **Options:**
+  - `subscription` - Game accessed through active subscription
+  - `purchase` - Game purchased permanently
+  
+  Example: `"purchase"`
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status indicator
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Container for the response data
+  
+  <Expandable title="data object">
+    <ResponseField name="juego" type="object">
+      The updated library entry
+      
+      <Expandable title="Updated Library Entry">
+        <ResponseField name="_id" type="string">
+          Unique identifier for the library entry
+        </ResponseField>
+        
+        <ResponseField name="user" type="string">
+          User ID who owns this library entry
+        </ResponseField>
+        
+        <ResponseField name="videojuego" type="string">
+          Game ID
+        </ResponseField>
+        
+        <ResponseField name="accessType" type="string">
+          Updated access type (purchase or subscription)
+        </ResponseField>
+        
+        <ResponseField name="addedAt" type="string">
+          Original timestamp when game was added (ISO 8601 format)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl --request PATCH \
+  --url https://api.gamehub.com/library/60f6c5b7f58a5c6d09fa1a28 \
+  --header 'Authorization: Bearer YOUR_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "accessType": "purchase"
+  }'
+```
+
+```javascript JavaScript
+const bibliotecaId = '60f6c5b7f58a5c6d09fa1a28';
+
+const response = await fetch(`https://api.gamehub.com/library/${bibliotecaId}`, {
+  method: 'PATCH',
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    accessType: 'purchase'
+  })
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+biblioteca_id = '60f6c5b7f58a5c6d09fa1a28'
+
+response = requests.patch(
+    f'https://api.gamehub.com/library/{biblioteca_id}',
+    headers={
+        'Authorization': 'Bearer YOUR_TOKEN',
+        'Content-Type': 'application/json'
+    },
+    json={'accessType': 'purchase'}
+)
+
+data = response.json()
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success Response
+{
+  "status": "success",
+  "data": {
+    "juego": {
+      "_id": "60f6c5b7f58a5c6d09fa1a28",
+      "user": "60f6c5b7f58a5c6d09fa1a29",
+      "videojuego": "60f6c5b7f58a5c6d09fa1a27",
+      "accessType": "purchase",
+      "addedAt": "2024-10-30T00:46:57.826Z"
+    }
+  }
+}
+```
+
+```json Error - Not Found (404)
+{
+  "status": "fail",
+  "message": "Library entry not found"
+}
+```
+</ResponseExample>
+
+## Common Use Cases
+
+### Upgrade from Subscription to Purchase
+Users who initially accessed a game through subscription may want to purchase it permanently:
+
+```json
+{
+  "accessType": "purchase"
+}
+```
+
+This ensures they retain access even if their subscription expires.
+
+### Downgrade from Purchase to Subscription
+While less common, users might want to change their access method:
+
+```json
+{
+  "accessType": "subscription"
+}
+```
+
+<Warning>
+  Changing from `purchase` to `subscription` means the user will lose access if their subscription expires or is cancelled.
+</Warning>
+
+## Access Type Comparison
+
+| Feature | Purchase | Subscription |
+|---------|----------|-------------|
+| **Permanence** | Permanent | Depends on active subscription |
+| **Cost** | One-time payment | Recurring fee |
+| **Access** | Lifetime | While subscribed |
+| **Transferability** | Non-transferable | Non-transferable |
+
+## Validation
+
+- The `accessType` must be either `"purchase"` or `"subscription"`
+- The library entry must belong to the authenticated user
+- The library entry must exist
+
+## Implementation Notes
+
+- Controller: `src/controllers/biblioteca.controller.js:67` (`actualizarJuegoDeBiblioteca`)
+- Route: `PATCH /library/:bibliotecaId` (protected)
+- Only the access type can be updated; other fields remain unchanged
+- The `addedAt` timestamp is preserved from the original entry

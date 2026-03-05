@@ -1,0 +1,298 @@
+---
+title: 'Error Handling'
+description: 'Understanding error responses in the GameHub API'
+---
+
+## Error Response Format
+
+All API errors follow a consistent JSON structure to help you quickly identify and resolve issues.
+
+### Standard Error Response
+
+```json
+{
+  "status": "fail",
+  "message": "Error description",
+  "isOperational": true,
+  "stack": "Error stack trace (dev environment only)",
+  "data": null
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | Always `"fail"` for error responses |
+| `message` | string | Human-readable error message |
+| `isOperational` | boolean | Indicates if the error is operational (expected) or system error |
+| `stack` | string | Stack trace (only included in development environment) |
+| `data` | null | Always `null` for error responses |
+
+## HTTP Status Codes
+
+The GameHub API uses standard HTTP status codes to indicate the success or failure of requests.
+
+### Success Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| `200 OK` | Request succeeded |
+| `201 Created` | Resource created successfully |
+| `204 No Content` | Request succeeded with no response body |
+
+### Client Error Codes
+
+| Status Code | Description | Common Causes |
+|-------------|-------------|---------------|
+| `400 Bad Request` | Invalid request parameters | Missing required fields, invalid data format |
+| `401 Unauthorized` | Authentication failed | Invalid or expired token, missing credentials |
+| `403 Forbidden` | Insufficient permissions | Attempting actions without proper role/permissions |
+| `404 Not Found` | Resource not found | Invalid ID, deleted resource |
+
+### Server Error Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| `500 Internal Server Error` | Unexpected server error |
+
+## Common Errors
+
+### Authentication Errors
+
+#### Missing Token
+
+**Status Code:** `404`
+
+```json
+{
+  "status": "fail",
+  "message": "Not authorized, no token",
+  "isOperational": true,
+  "data": null
+}
+```
+
+#### Expired Token
+
+**Status Code:** `401`
+
+```json
+{
+  "status": "fail",
+  "message": "Session expired, please log in again",
+  "isOperational": true,
+  "data": null
+}
+```
+
+#### Invalid Token
+
+**Status Code:** `401`
+
+```json
+{
+  "status": "fail",
+  "message": "Invalid token, please log in again",
+  "isOperational": true,
+  "data": null
+}
+```
+
+### Authorization Errors
+
+#### Insufficient Permissions
+
+**Status Code:** `403`
+
+```json
+{
+  "status": "fail",
+  "message": "No tienes permisos para realizar esta acción",
+  "isOperational": true,
+  "data": null
+}
+```
+
+### Validation Errors
+
+#### Missing Credentials
+
+**Status Code:** `400`
+
+```json
+{
+  "status": "fail",
+  "message": "Por favor, ingrese correo y contraseña",
+  "isOperational": true,
+  "data": null
+}
+```
+
+#### Missing Required Field
+
+**Status Code:** `400`
+
+```json
+{
+  "status": "fail",
+  "message": "La imagen del videojuego es obligatoria",
+  "isOperational": true,
+  "data": null
+}
+```
+
+### Resource Errors
+
+#### User Not Found
+
+**Status Code:** `404`
+
+```json
+{
+  "status": "fail",
+  "message": "Usuario no encontrado",
+  "isOperational": true,
+  "data": null
+}
+```
+
+#### Game Not Found
+
+**Status Code:** `404`
+
+```json
+{
+  "status": "fail",
+  "message": "Videojuego no encontrado",
+  "isOperational": true,
+  "data": null
+}
+```
+
+#### Library Game Not Found
+
+**Status Code:** `404`
+
+```json
+{
+  "status": "fail",
+  "message": "Juego no encontrado en la biblioteca",
+  "isOperational": true,
+  "data": null
+}
+```
+
+### Subscription Errors
+
+#### Subscription Type Not Found
+
+**Status Code:** `404`
+
+```json
+{
+  "status": "fail",
+  "message": "Tipo de suscripción no encontrado",
+  "isOperational": true,
+  "data": null
+}
+```
+
+#### Active Subscription Exists
+
+**Status Code:** `400`
+
+```json
+{
+  "status": "fail",
+  "message": "Ya tienes una suscripción activa",
+  "isOperational": true,
+  "data": null
+}
+```
+
+#### No Active Subscription
+
+**Status Code:** `404`
+
+```json
+{
+  "status": "fail",
+  "message": "No tienes una suscripción activa",
+  "isOperational": true,
+  "data": null
+}
+```
+
+## Error Handling Best Practices
+
+### Check Status Codes
+
+Always check the HTTP status code before parsing the response body:
+
+```javascript
+if (response.status >= 400) {
+  const error = await response.json();
+  console.error(`Error ${response.status}: ${error.message}`);
+}
+```
+
+### Handle Token Expiration
+
+Implement automatic token refresh or redirect to login when receiving 401 errors:
+
+```javascript
+if (response.status === 401) {
+  // Redirect to login or refresh token
+  window.location.href = '/login';
+}
+```
+
+### Display User-Friendly Messages
+
+The `message` field contains descriptive error messages suitable for display to end users:
+
+```javascript
+const showError = (error) => {
+  alert(error.message);
+};
+```
+
+### Operational vs System Errors
+
+The `isOperational` field helps distinguish between:
+
+- **Operational errors** (`isOperational: true`): Expected errors like validation failures, resource not found
+- **System errors** (`isOperational: false`): Unexpected errors that may require technical investigation
+
+```javascript
+if (!error.isOperational) {
+  // Log to error monitoring service
+  console.error('System error occurred:', error);
+}
+```
+
+## Development vs Production
+
+In development environments (`NODE_ENV=dev`), error responses include a `stack` field with the full stack trace for debugging. This field is automatically omitted in production for security reasons.
+
+**Development Response:**
+```json
+{
+  "status": "fail",
+  "message": "Usuario no encontrado",
+  "isOperational": true,
+  "stack": "Error: Usuario no encontrado\n    at ...",
+  "data": null
+}
+```
+
+**Production Response:**
+```json
+{
+  "status": "fail",
+  "message": "Usuario no encontrado",
+  "isOperational": true,
+  "data": null
+}
+```

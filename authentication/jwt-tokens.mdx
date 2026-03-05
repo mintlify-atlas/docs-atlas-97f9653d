@@ -1,0 +1,290 @@
+---
+title: 'JWT Tokens'
+description: 'Understanding JWT token generation and validation in GameHub API'
+---
+
+## Overview
+
+The GameHub API uses JSON Web Tokens (JWT) for stateless authentication. Tokens are generated upon successful login or registration and validated on every protected request.
+
+## Token Generation
+
+JWT tokens are created using the `signToken` helper function and automatically sent to clients via HTTP-only cookies.
+
+### Implementation
+
+```javascript src/helpers/auth.helper.js
+const jwt = require('jsonwebtoken');
+
+const signToken = (id) => {
+    return jwt.sign({ id }, process.env.JWT_SECRET, {
+        expiresIn: '1d',
+    });
+};
+```
+
+### Token Payload
+
+Each JWT token contains:
+
+<ParamField path="id" type="string" required>
+  The user's MongoDB ObjectId used to identify the authenticated user
+</ParamField>
+
+<ParamField path="iat" type="number">
+  Issued At timestamp - automatically added by JWT
+</ParamField>
+
+<ParamField path="exp" type="number">
+  Expiration timestamp - set to 24 hours from issuance
+</ParamField>
+
+## Token Delivery
+
+Tokens are delivered to clients in two ways for flexibility:
+
+### 1. HTTP-Only Cookie (Primary Method)
+
+The `createSendToken` function sets a secure HTTP-only cookie:
+
+```javascript src/helpers/auth.helper.js
+exports.createSendToken = (user, statusCode, res) => {
+    const token = signToken(user._id);
+    const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+        path: '/',
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+    };
+    res.cookie('token', token, cookieOptions);
+    res.status(statusCode).json({
+        status: 'success',
+        token,
+        data: { user }
+    });
+};
+```
+
+### Cookie Options Explained
+
+<ResponseField name="httpOnly" type="boolean" default="true">
+  Prevents JavaScript access to the cookie, protecting against XSS attacks
+</ResponseField>
+
+<ResponseField name="secure" type="boolean">
+  Ensures cookie is only sent over HTTPS in production environments
+</ResponseField>
+
+<ResponseField name="sameSite" type="string">
+  - **Production**: `'None'` - allows cross-site requests (requires `secure: true`)
+  - **Development**: `'Lax'` - protects against CSRF while allowing some cross-site usage
+</ResponseField>
+
+<ResponseField name="path" type="string" default="'/'">
+  Cookie is available across all routes
+</ResponseField>
+
+<ResponseField name="maxAge" type="number" default="86400000">
+  Cookie lifetime in milliseconds (24 hours)
+</ResponseField>
+
+### 2. Response Body (Secondary Method)
+
+The token is also included in the JSON response for clients that prefer to manage tokens manually:
+
+```json
+{
+  "status": "success",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3M...",
+  "data": {
+    "user": { ... }
+  }
+}
+```
+
+## Token Validation
+
+The `protect` middleware validates JWT tokens on every protected request.
+
+### Middleware Implementation
+
+```javascript src/middlewares/auth.middleware.js
+const jwt = require('jsonwebtoken');
+const ApiError = require('../utils/apiError');
+
+exports.protect = (req, res, next) => {
+  let token;
+  
+  // Extract token from cookies
+  if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
+  
+  // Check if token exists
+  if (!token) {
+    throw new ApiError(404, 'Not authorized, no token');
+  }
+  
+  try {
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Attach user ID to request
+    req.userId = decoded.id;
+    next();
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      throw new ApiError(401, 'Session expired, please log in again');
+    } else if (error.name === 'JsonWebTokenError') {
+      throw new ApiError(401, 'Invalid token, please log in again');
+    } else {
+      throw new ApiError(401, 'Not authorized, token failed');
+    }
+  }
+};
+```
+
+### Validation Flow
+
+<Steps>
+  <Step title="Token Extraction">
+    The middleware extracts the token from the `token` cookie in the request.
+  </Step>
+  <Step title="Token Presence Check">
+    If no token is found, a 404 error is thrown.
+  </Step>
+  <Step title="Token Verification">
+    The token is verified against the `JWT_SECRET` environment variable.
+  </Step>
+  <Step title="Payload Decoding">
+    If valid, the token payload is decoded to extract the user ID.
+  </Step>
+  <Step title="Request Augmentation">
+    The user ID is attached to `req.userId` for use in subsequent middleware and controllers.
+  </Step>
+</Steps>
+
+## Error Handling
+
+The middleware handles three types of JWT errors:
+
+<AccordionGroup>
+  <Accordion title="TokenExpiredError" icon="clock">
+    **Status Code:** 401
+    
+    **Message:** "Session expired, please log in again"
+    
+    **Cause:** The token's `exp` (expiration) time has passed. Users must log in again to get a fresh token.
+  </Accordion>
+  
+  <Accordion title="JsonWebTokenError" icon="triangle-exclamation">
+    **Status Code:** 401
+    
+    **Message:** "Invalid token, please log in again"
+    
+    **Cause:** The token is malformed, has been tampered with, or was signed with a different secret.
+  </Accordion>
+  
+  <Accordion title="Generic Token Error" icon="xmark">
+    **Status Code:** 401
+    
+    **Message:** "Not authorized, token failed"
+    
+    **Cause:** Any other unexpected error during token verification.
+  </Accordion>
+</AccordionGroup>
+
+## Environment Configuration
+
+<Warning>
+  The `JWT_SECRET` environment variable is critical for security. It must be:
+  - A strong, random string (at least 32 characters)
+  - Kept secret and never committed to version control
+  - Different for each environment (development, staging, production)
+</Warning>
+
+### Required Environment Variables
+
+```bash .env
+JWT_SECRET=your-super-secret-jwt-key-here-min-32-chars
+NODE_ENV=production
+```
+
+## Token Lifetime
+
+<Info>
+  Tokens are valid for **24 hours** from the time of issuance. After expiration, users must log in again to receive a new token.
+</Info>
+
+The token lifetime is configured in two places:
+
+1. **JWT Expiration**: `expiresIn: '1d'` in the `signToken` function
+2. **Cookie Max Age**: `maxAge: 24 * 60 * 60 * 1000` (24 hours in milliseconds)
+
+Both should remain synchronized to ensure consistent behavior.
+
+## Using the Token in Requests
+
+### Automatic (Recommended)
+
+When using cookies, tokens are automatically included in requests:
+
+```javascript
+// Fetch API with credentials
+fetch('https://api.gamehub.com/games', {
+  method: 'GET',
+  credentials: 'include' // Important: includes cookies
+});
+```
+
+```javascript
+// Axios with credentials
+axios.get('https://api.gamehub.com/games', {
+  withCredentials: true // Important: includes cookies
+});
+```
+
+### Manual (Alternative)
+
+If managing tokens manually from the response body:
+
+```javascript
+// Store token from login response
+const { token } = loginResponse.data;
+localStorage.setItem('token', token);
+
+// Include in subsequent requests (custom implementation required)
+fetch('https://api.gamehub.com/games', {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+```
+
+<Note>
+  The manual method requires modifying the `protect` middleware to also check the Authorization header, as the current implementation only reads from cookies.
+</Note>
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use HTTPS" icon="lock">
+    Always use HTTPS in production to protect tokens in transit.
+  </Card>
+  <Card title="Rotate Secrets" icon="rotate">
+    Periodically rotate the JWT_SECRET, especially after security incidents.
+  </Card>
+  <Card title="Short Expiration" icon="clock">
+    Keep token expiration times reasonable (24 hours) to limit exposure.
+  </Card>
+  <Card title="Monitor Failed Attempts" icon="chart-line">
+    Log and monitor failed authentication attempts for suspicious activity.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Card title="Roles & Permissions" icon="users" href="/authentication/roles-permissions">
+  Learn how to implement role-based access control with JWT tokens
+</Card>

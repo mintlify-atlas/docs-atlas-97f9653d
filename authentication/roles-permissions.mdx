@@ -1,0 +1,414 @@
+---
+title: 'Roles & Permissions'
+description: 'Role-based access control system in GameHub API'
+---
+
+## Overview
+
+The GameHub API implements a role-based access control (RBAC) system with two user roles: **user** and **admin**. This system ensures that sensitive operations are restricted to authorized users only.
+
+## User Roles
+
+<CardGroup cols={2}>
+  <Card title="User" icon="user">
+    **Default role** for all new registrations. Has access to standard features and can only manage their own resources.
+  </Card>
+  <Card title="Admin" icon="user-shield">
+    **Elevated privileges** with access to administrative operations like managing all games, users, and system configurations.
+  </Card>
+</CardGroup>
+
+## User Model Schema
+
+Roles are defined in the User model with strict validation:
+
+```javascript src/models/user.model.js
+const UserSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: [true, 'El nombre es obligatorio'],
+    },
+    email: {
+        type: String,
+        required: [true, 'El correo es obligatorio'],
+        unique: true,
+        lowercase: true,
+    },
+    password: {
+        type: String,
+        required: [true, 'La contraseña es obligatoria'],
+        minlength: 6,
+        select: false,
+    },
+    rol: {
+        type: String,
+        enum: ['user', 'admin'],
+        default: 'user',
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+```
+
+### Role Field Specification
+
+<ResponseField name="rol" type="string" default="user" required>
+  User's role in the system
+  
+  <Expandable title="properties">
+    <ResponseField name="enum" type="array">
+      Allowed values: `['user', 'admin']`
+    </ResponseField>
+    <ResponseField name="default" type="string">
+      Automatically set to `'user'` if not specified during registration
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<Warning>
+  The role field uses enum validation to prevent invalid role assignments. Any value other than 'user' or 'admin' will be rejected by MongoDB.
+</Warning>
+
+## Setting User Roles
+
+### During Registration
+
+Roles can be specified during user signup:
+
+```javascript
+// Register as a regular user (default)
+POST /auth/signup
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "securePassword123"
+  // rol defaults to 'user'
+}
+
+// Register as an admin (if allowed by your business logic)
+POST /auth/signup
+{
+  "name": "Admin User",
+  "email": "admin@example.com",
+  "password": "securePassword123",
+  "rol": "admin"
+}
+```
+
+<Info>
+  In production environments, you should typically prevent regular users from self-registering as admins. Consider adding additional validation in the signup controller or creating admins through a separate administrative process.
+</Info>
+
+## Admin-Only Middleware
+
+The `restrictToAdmin` middleware protects routes that require administrative privileges.
+
+### Implementation
+
+```javascript src/middlewares/auth.middleware.js
+const User = require('../models/user.model');
+const ApiError = require('../utils/apiError');
+
+exports.restrictToAdmin = async (req, res, next) => {
+  try {
+    // Fetch user from database using ID from JWT token
+    const user = await User.findById(req.userId).select('-password');
+    
+    console.log(user.rol);
+    
+    // Check if user has 'user' role (not admin)
+    if (user.rol === 'user') {
+      return next(new ApiError(403, 'No tienes permisos para realizar esta acción'));
+    }
+    
+    // User is admin, proceed to next middleware/controller
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+### How It Works
+
+<Steps>
+  <Step title="User Identification">
+    The middleware uses `req.userId` (set by the `protect` middleware) to identify the current user.
+  </Step>
+  <Step title="Database Query">
+    Fetches the complete user document from the database, excluding the password field.
+  </Step>
+  <Step title="Role Verification">
+    Checks if the user's role is 'user' (not admin).
+  </Step>
+  <Step title="Access Decision">
+    - If role is 'user': Returns a 403 Forbidden error
+    - If role is 'admin': Allows the request to proceed
+  </Step>
+</Steps>
+
+## Protecting Routes
+
+To protect routes with role-based access control, combine both middleware functions:
+
+### Example Route Protection
+
+```javascript
+const { protect, restrictToAdmin } = require('./middlewares/auth.middleware');
+
+// Public route - no authentication required
+router.get('/games', gameController.getAllGames);
+
+// Protected route - authentication required
+router.get('/games/my-library', protect, gameController.getMyGames);
+
+// Admin-only route - authentication + admin role required
+router.delete('/games/:id', protect, restrictToAdmin, gameController.deleteGame);
+router.post('/games', protect, restrictToAdmin, gameController.createGame);
+router.put('/games/:id', protect, restrictToAdmin, gameController.updateGame);
+```
+
+### Middleware Chain Order
+
+<Warning>
+  **Important:** Always apply `protect` middleware **before** `restrictToAdmin`.
+  
+  The `restrictToAdmin` middleware depends on `req.userId` being set by the `protect` middleware.
+</Warning>
+
+```javascript
+// Correct order
+router.delete('/games/:id', protect, restrictToAdmin, controller.delete);
+
+// Incorrect order - will fail
+router.delete('/games/:id', restrictToAdmin, protect, controller.delete);
+```
+
+## Permission Levels
+
+### User Role Permissions
+
+<Accordion title="What users can do">
+  - Register and login to their account
+  - View their own profile information
+  - Browse public game listings
+  - Manage their own game library
+  - Update their own profile
+  - Logout from their account
+</Accordion>
+
+### Admin Role Permissions
+
+<Accordion title="What admins can do" defaultOpen>
+  **All user permissions, plus:**
+  - Create new games in the system
+  - Update any game information
+  - Delete games from the system
+  - View all user accounts
+  - Manage system-wide settings
+  - Access administrative dashboards
+</Accordion>
+
+## Error Responses
+
+When a user without proper permissions attempts to access a restricted route:
+
+### 403 Forbidden Response
+
+```json
+{
+  "status": "error",
+  "statusCode": 403,
+  "message": "No tienes permisos para realizar esta acción"
+}
+```
+
+<ResponseField name="status" type="string">
+  Always "error" for failed requests
+</ResponseField>
+
+<ResponseField name="statusCode" type="number">
+  HTTP status code (403 for permission denied)
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable error message in Spanish: "You don't have permissions to perform this action"
+</ResponseField>
+
+## Common Use Cases
+
+<CodeGroup>
+
+```javascript Admin-Only Game Creation
+// Route definition
+router.post('/games', protect, restrictToAdmin, gameController.createGame);
+
+// Only admins can create games
+// Regular users will receive 403 Forbidden
+```
+
+```javascript User Profile Access
+// Route definition  
+router.get('/auth/me', protect, authController.getInfo);
+
+// Any authenticated user can access their own profile
+// No admin restriction needed
+```
+
+```javascript Public Content
+// Route definition
+router.get('/games', gameController.getAllGames);
+
+// No authentication required
+// Available to everyone
+```
+
+</CodeGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Principle of Least Privilege" icon="shield-halved">
+    Grant users only the minimum permissions they need. Default to 'user' role and elevate only when necessary.
+  </Card>
+  <Card title="Validate on Backend" icon="server">
+    Always verify permissions on the server. Never rely solely on frontend role checks.
+  </Card>
+  <Card title="Clear Error Messages" icon="message">
+    Provide clear feedback when users lack permissions, helping them understand access restrictions.
+  </Card>
+  <Card title="Audit Admin Actions" icon="clipboard-list">
+    Log all administrative actions for security monitoring and compliance.
+  </Card>
+</CardGroup>
+
+## Extending the System
+
+### Adding More Roles
+
+To add additional roles (e.g., 'moderator', 'premium'):
+
+1. **Update the User Model**:
+
+```javascript
+rol: {
+    type: String,
+    enum: ['user', 'moderator', 'admin', 'premium'],
+    default: 'user',
+}
+```
+
+2. **Create New Middleware**:
+
+```javascript
+exports.restrictToModerator = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.userId).select('-password');
+    
+    if (!['moderator', 'admin'].includes(user.rol)) {
+      return next(new ApiError(403, 'Moderator access required'));
+    }
+    
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+```
+
+3. **Apply to Routes**:
+
+```javascript
+router.put('/games/:id/verify', protect, restrictToModerator, controller.verify);
+```
+
+### Permission-Based Access Control
+
+For more granular control, consider implementing permission-based access:
+
+```javascript
+const UserSchema = new mongoose.Schema({
+    // ... existing fields
+    permissions: {
+        type: [String],
+        default: [],
+        enum: [
+            'read:games',
+            'write:games',
+            'delete:games',
+            'read:users',
+            'write:users'
+        ]
+    }
+});
+```
+
+<Tip>
+  For complex permission requirements, consider using a dedicated RBAC library like `accesscontrol` or `casl`.
+</Tip>
+
+## Security Considerations
+
+<AccordionGroup>
+  <Accordion title="Prevent Self-Promotion" icon="user-lock">
+    Users should not be able to change their own role. Implement role updates as a separate admin-only endpoint with additional validation.
+  </Accordion>
+  
+  <Accordion title="Database-Level Role Check" icon="database">
+    The `restrictToAdmin` middleware fetches the role from the database on each request, preventing token-based role escalation attacks.
+  </Accordion>
+  
+  <Accordion title="Role Enumeration" icon="list-check">
+    The enum constraint in the User model prevents invalid roles at the database level, providing defense in depth.
+  </Accordion>
+</AccordionGroup>
+
+## Testing Role-Based Access
+
+### Test Cases to Implement
+
+1. **User accessing user endpoint**: Should succeed
+2. **User accessing admin endpoint**: Should receive 403
+3. **Admin accessing admin endpoint**: Should succeed
+4. **Unauthenticated accessing protected endpoint**: Should receive 401/404
+5. **Invalid role in database**: Should be prevented by schema validation
+
+### Example Test
+
+```javascript
+describe('Role-Based Access Control', () => {
+  it('should deny user access to admin routes', async () => {
+    const userToken = await loginAsUser();
+    
+    const response = await request(app)
+      .delete('/games/123')
+      .set('Cookie', `token=${userToken}`);
+    
+    expect(response.status).toBe(403);
+    expect(response.body.message).toContain('No tienes permisos');
+  });
+  
+  it('should allow admin access to admin routes', async () => {
+    const adminToken = await loginAsAdmin();
+    
+    const response = await request(app)
+      .delete('/games/123')
+      .set('Cookie', `token=${adminToken}`);
+    
+    expect(response.status).not.toBe(403);
+  });
+});
+```
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Authentication Overview" icon="shield" href="/authentication/overview">
+    Learn about the authentication system foundation
+  </Card>
+  <Card title="JWT Tokens" icon="key" href="/authentication/jwt-tokens">
+    Understand how tokens carry user identity and roles
+  </Card>
+</CardGroup>

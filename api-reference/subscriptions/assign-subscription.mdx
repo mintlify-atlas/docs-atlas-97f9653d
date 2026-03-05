@@ -1,0 +1,173 @@
+---
+title: "Assign Subscription"
+api: "POST /sub/assign"
+description: "Assign a subscription to any user (Admin only)"
+---
+
+Allows administrators to assign or update a subscription for any user in the system. This is useful for customer support, promotional grants, or manual subscription management.
+
+<Warning>
+  This endpoint requires admin access. Only users with the `admin` role can assign subscriptions to other users.
+</Warning>
+
+## Authentication
+
+Requires a valid JWT token with admin privileges.
+
+```bash
+Authorization: Bearer <admin_token>
+```
+
+## Request Body
+
+<ParamField body="userId" type="string" required>
+  The ID of the user to assign the subscription to
+</ParamField>
+
+<ParamField body="subscriptionTypeId" type="string" required>
+  The name of the subscription plan to assign. Must be one of: `trial`, `monthly`, or `annual`
+</ParamField>
+
+## Behavior
+
+- If the user already has a subscription (active or inactive), it will be updated with the new subscription type
+- If the user doesn't have any subscription record, a new one will be created
+- The `activatedBy` field will be set to the admin user's ID who performed the assignment
+- Any existing subscription will be replaced, and the new subscription period starts immediately
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status indicator
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="data properties">
+    <ResponseField name="subscription" type="object">
+      The assigned or updated subscription
+      
+      <Expandable title="subscription properties">
+        <ResponseField name="_id" type="string">
+          Unique identifier for the subscription
+        </ResponseField>
+        
+        <ResponseField name="user" type="string">
+          User ID of the subscriber
+        </ResponseField>
+        
+        <ResponseField name="subscriptionType" type="string">
+          ID of the subscription type
+        </ResponseField>
+        
+        <ResponseField name="isActive" type="boolean">
+          Whether the subscription is currently active (always true after assignment)
+        </ResponseField>
+        
+        <ResponseField name="startDate" type="string">
+          ISO 8601 timestamp of when the subscription started
+        </ResponseField>
+        
+        <ResponseField name="endDate" type="string">
+          ISO 8601 timestamp of when the subscription expires
+        </ResponseField>
+        
+        <ResponseField name="activatedBy" type="string">
+          User ID of the admin who assigned the subscription
+        </ResponseField>
+        
+        <ResponseField name="createdAt" type="string">
+          ISO 8601 timestamp of when the subscription record was created
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.gamehub.com/sub/assign \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "60f6c5b7f58a5c6d09fa1a28",
+    "subscriptionTypeId": "annual"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.gamehub.com/sub/assign', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${adminToken}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    userId: '60f6c5b7f58a5c6d09fa1a28',
+    subscriptionTypeId: 'annual'
+  })
+});
+
+const data = await response.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 - Success
+{
+  "status": "success",
+  "message": "Suscripción asignada o actualizada correctamente",
+  "data": {
+    "subscription": {
+      "_id": "60f6c5b7f58a5c6d09fa1a31",
+      "user": "60f6c5b7f58a5c6d09fa1a28",
+      "subscriptionType": "60f6c5b7f58a5c6d09fa1a32",
+      "isActive": true,
+      "startDate": "2026-03-05T10:00:00.000Z",
+      "endDate": "2027-03-05T10:00:00.000Z",
+      "activatedBy": "60f6c5b7f58a5c6d09fa1a27",
+      "createdAt": "2026-03-05T10:00:00.000Z"
+    }
+  }
+}
+```
+
+```json 403 - Not Authorized
+{
+  "status": "error",
+  "message": "No autorizado, solo accesible para administradores"
+}
+```
+
+```json 404 - User Not Found
+{
+  "status": "error",
+  "message": "Usuario no encontrado"
+}
+```
+
+```json 404 - Subscription Type Not Found
+{
+  "status": "error",
+  "message": "Tipo de suscripción no encontrado"
+}
+```
+</ResponseExample>
+
+## Use Cases
+
+- **Customer Support**: Extend or upgrade a user's subscription plan
+- **Promotional Grants**: Provide free trials or complimentary subscriptions
+- **Manual Corrections**: Fix subscription issues or billing problems
+- **Testing**: Set up test accounts with specific subscription levels
+
+## How It Affects Game Access
+
+When an admin assigns a subscription to a user:
+1. The user immediately gains access to all subscription-based games
+2. They can add subscription games to their library
+3. Access continues until the `endDate` is reached
+4. The subscription can be tracked back to the admin who assigned it via the `activatedBy` field
