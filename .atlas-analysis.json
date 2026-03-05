@@ -1,0 +1,144 @@
+{
+  "projectType": "api-service",
+  "projectName": "GameHub API",
+  "projectDescription": "RESTful API for managing video games and user access through subscriptions and purchases",
+  "theme": "palm",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "introduction",
+              "features"
+            ]
+          },
+          {
+            "group": "Getting Started",
+            "pages": [
+              "getting-started/installation",
+              "getting-started/configuration",
+              "getting-started/database-setup"
+            ]
+          },
+          {
+            "group": "Authentication",
+            "pages": [
+              "authentication/overview",
+              "authentication/jwt-tokens",
+              "authentication/roles-permissions"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/subscription-system",
+              "concepts/game-library",
+              "concepts/access-control"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api-reference/auth/signup",
+              "api-reference/auth/login",
+              "api-reference/auth/logout",
+              "api-reference/auth/get-info"
+            ]
+          },
+          {
+            "group": "Users",
+            "pages": [
+              "api-reference/users/list-users",
+              "api-reference/users/create-user",
+              "api-reference/users/get-user",
+              "api-reference/users/update-user",
+              "api-reference/users/delete-user"
+            ]
+          },
+          {
+            "group": "Games",
+            "pages": [
+              "api-reference/games/list-games",
+              "api-reference/games/get-game",
+              "api-reference/games/add-game",
+              "api-reference/games/update-game",
+              "api-reference/games/delete-game"
+            ]
+          },
+          {
+            "group": "Library",
+            "pages": [
+              "api-reference/library/get-library",
+              "api-reference/library/add-to-library",
+              "api-reference/library/get-library-item",
+              "api-reference/library/update-library-item",
+              "api-reference/library/remove-from-library"
+            ]
+          },
+          {
+            "group": "Subscriptions",
+            "pages": [
+              "api-reference/subscriptions/list-plans",
+              "api-reference/subscriptions/subscribe",
+              "api-reference/subscriptions/assign-subscription",
+              "api-reference/subscriptions/cancel-subscription",
+              "api-reference/subscriptions/cancel-assigned"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "api-reference/errors",
+              "api-reference/rate-limits"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Role-based access control (Admin/User)",
+    "Subscription management (Trial, Monthly, Annual)",
+    "Game library with purchase and subscription access",
+    "JWT authentication with secure cookies",
+    "File upload support for game images",
+    "OpenAPI/Swagger documentation"
+  ],
+  "publicApiSurface": [
+    "POST /api/v1/auth/signup",
+    "POST /api/v1/auth/login",
+    "GET /api/v1/auth/logout",
+    "GET /api/v1/auth/getinfo",
+    "GET /api/v1/user",
+    "POST /api/v1/user",
+    "GET /api/v1/user/:id",
+    "PATCH /api/v1/user/:id",
+    "DELETE /api/v1/user/:id",
+    "GET /api/v1/game",
+    "GET /api/v1/game/:videojuegoId",
+    "POST /api/v1/game/add",
+    "PATCH /api/v1/game/update/:videojuegoId",
+    "DELETE /api/v1/game/delete/:videojuegoId",
+    "GET /api/v1/library",
+    "POST /api/v1/library/add",
+    "GET /api/v1/library/:bibliotecaId",
+    "PATCH /api/v1/library/:bibliotecaId",
+    "DELETE /api/v1/library/:bibliotecaId",
+    "GET /api/v1/sub",
+    "POST /api/v1/sub/subscribe",
+    "POST /api/v1/sub/assign",
+    "POST /api/v1/sub/cancel",
+    "POST /api/v1/sub/cancelAssign"
+  ]
+}
