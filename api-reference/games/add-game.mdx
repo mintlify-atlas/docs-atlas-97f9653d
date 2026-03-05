@@ -109,7 +109,7 @@ Content-Type: `multipart/form-data`
 
 ```bash cURL
 curl --request POST \
-  --url https://api.gamehub.com/game/add \
+  --url https://api.gamehub.com/api/v1/game/add \
   --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' \
   --header 'Content-Type: multipart/form-data' \
   --form 'title=Assassins Creed Valhalla' \
@@ -133,7 +133,7 @@ formData.append('purchase', 'false');
 formData.append('price', '0');
 formData.append('image', fileInput.files[0]);
 
-const response = await fetch('https://api.gamehub.com/game/add', {
+const response = await fetch('https://api.gamehub.com/api/v1/game/add', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
@@ -147,7 +147,7 @@ const data = await response.json();
 ```python Python
 import requests
 
-url = "https://api.gamehub.com/game/add"
+url = "https://api.gamehub.com/api/v1/game/add"
 headers = {
     "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }

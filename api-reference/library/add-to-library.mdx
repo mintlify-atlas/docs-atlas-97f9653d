@@ -73,7 +73,7 @@ Allows an authenticated user to add a game to their library. The game can be add
 <RequestExample>
 ```bash cURL
 curl --request POST \
-  --url https://api.gamehub.com/library/add \
+  --url https://api.gamehub.com/api/v1/library/add \
   --header 'Authorization: Bearer YOUR_TOKEN' \
   --header 'Content-Type: application/json' \
   --data '{
@@ -83,7 +83,7 @@ curl --request POST \
 ```
 
 ```javascript JavaScript
-const response = await fetch('https://api.gamehub.com/library/add', {
+const response = await fetch('https://api.gamehub.com/api/v1/library/add', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer YOUR_TOKEN',
@@ -102,7 +102,7 @@ const data = await response.json();
 import requests
 
 response = requests.post(
-    'https://api.gamehub.com/library/add',
+    'https://api.gamehub.com/api/v1/library/add',
     headers={
         'Authorization': 'Bearer YOUR_TOKEN',
         'Content-Type': 'application/json'

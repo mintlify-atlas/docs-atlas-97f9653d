@@ -33,6 +33,7 @@ GameHub API uses environment variables to manage configuration settings. You nee
     JWT_SECRET=your-secret-key-here
     NODE_ENV=development
     HOST_FRONTED=http://localhost:3001
+    HOST_BACKEND=https://api.yourdomain.com/api/v1/
     ```
   </Step>
 
@@ -78,6 +79,17 @@ GameHub API uses environment variables to manage configuration settings. You nee
       **Examples:**
       - Development: `http://localhost:3001`
       - Production: `https://yourdomain.com`
+    </ParamField>
+    
+    <ParamField path="HOST_BACKEND" type="string">
+      Backend API URL for production Swagger documentation (required when `NODE_ENV=production`)
+      
+      **Example:**
+      - Production: `https://api.yourdomain.com/api/v1/`
+      
+      <Note>
+        This variable is only used in production mode to configure the Swagger API documentation server URL.
+      </Note>
     </ParamField>
   </Step>
 </Steps>

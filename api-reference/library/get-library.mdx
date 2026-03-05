@@ -94,12 +94,12 @@ Returns a list of all games in the user's personal library, including both purch
 <RequestExample>
 ```bash cURL
 curl --request GET \
-  --url https://api.gamehub.com/library \
+  --url https://api.gamehub.com/api/v1/library \
   --header 'Authorization: Bearer YOUR_TOKEN'
 ```
 
 ```javascript JavaScript
-const response = await fetch('https://api.gamehub.com/library', {
+const response = await fetch('https://api.gamehub.com/api/v1/library', {
   method: 'GET',
   headers: {
     'Authorization': 'Bearer YOUR_TOKEN'
@@ -113,7 +113,7 @@ const data = await response.json();
 import requests
 
 response = requests.get(
-    'https://api.gamehub.com/library',
+    'https://api.gamehub.com/api/v1/library',
     headers={'Authorization': 'Bearer YOUR_TOKEN'}
 )
 

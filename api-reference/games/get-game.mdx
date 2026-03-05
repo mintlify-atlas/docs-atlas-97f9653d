@@ -74,14 +74,14 @@ Authorization: Bearer <token>
 
 ```bash cURL
 curl --request GET \
-  --url https://api.gamehub.com/game/60f6c5b7f58a5c6d09fa1a27 \
+  --url https://api.gamehub.com/api/v1/game/60f6c5b7f58a5c6d09fa1a27 \
   --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 ```
 
 ```javascript JavaScript
 const gameId = '60f6c5b7f58a5c6d09fa1a27';
 
-const response = await fetch(`https://api.gamehub.com/game/${gameId}`, {
+const response = await fetch(`https://api.gamehub.com/api/v1/game/${gameId}`, {
   method: 'GET',
   headers: {
     'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
@@ -95,7 +95,7 @@ const data = await response.json();
 import requests
 
 game_id = "60f6c5b7f58a5c6d09fa1a27"
-url = f"https://api.gamehub.com/game/{game_id}"
+url = f"https://api.gamehub.com/api/v1/game/{game_id}"
 headers = {
     "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }

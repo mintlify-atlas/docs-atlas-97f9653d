@@ -32,14 +32,14 @@ On successful deletion, returns HTTP status code 204 (No Content) with no respon
 
 ```bash cURL
 curl --request DELETE \
-  --url https://api.gamehub.com/game/delete/60f6c5b7f58a5c6d09fa1a27 \
+  --url https://api.gamehub.com/api/v1/game/delete/60f6c5b7f58a5c6d09fa1a27 \
   --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 ```
 
 ```javascript JavaScript
 const gameId = '60f6c5b7f58a5c6d09fa1a27';
 
-const response = await fetch(`https://api.gamehub.com/game/delete/${gameId}`, {
+const response = await fetch(`https://api.gamehub.com/api/v1/game/delete/${gameId}`, {
   method: 'DELETE',
   headers: {
     'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
@@ -56,7 +56,7 @@ if (response.status === 204) {
 import requests
 
 game_id = "60f6c5b7f58a5c6d09fa1a27"
-url = f"https://api.gamehub.com/game/delete/{game_id}"
+url = f"https://api.gamehub.com/api/v1/game/delete/{game_id}"
 headers = {
     "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
